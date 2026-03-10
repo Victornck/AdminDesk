@@ -11,6 +11,8 @@ target/
 # Spring Boot
 application-local.properties
 application-local.yml
+application.properties
+application.yml
 
 # Sistema
 .DS_Store
