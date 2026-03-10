@@ -12,23 +12,29 @@ public class ClienteService {
 
     @Autowired private ClientRepository clientRepository;
 
-    public Client salvar(Client client) {
+    public Client save(Client client) {
         return clientRepository.save(client);
     }
 
-    public List<Client> listarPorUsuario(Long userId) {
+    public List<Client> listByUser(Long userId) {
         return clientRepository.findByUserId(userId);
     }
 
-    public void deletar(Long id) {
+    public void delete(Long id) {
         clientRepository.deleteById(id);
     }
 
-    public Client atualizar(Long id, Client clientAtualizado) {
+    public Client update(Long id, Client updatedClient) {
         Client existing = clientRepository.findById(id).orElseThrow();
-        existing.setNome(clientAtualizado.getNome());
-        existing.setEmail(clientAtualizado.getEmail());
-        existing.setTelefone(clientAtualizado.getTelefone());
+        existing.setName(updatedClient.getName());
+        existing.setEmail(updatedClient.getEmail());
+        existing.setPhone(updatedClient.getPhone());
+        existing.setValueMonthly(updatedClient.getValueMonthly());
         return clientRepository.save(existing);
+    }
+
+    public Double getMonthlyReport(Long userId) {
+        Double total = clientRepository.sumValueMonthlyByUserId(userId);
+        return total != null ? total : 0.0;
     }
 }

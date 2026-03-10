@@ -18,10 +18,11 @@ public class Client {
     private Long id;
 
     @NotBlank
-    private String nome;
+    private String name;
 
     private String email;
-    private String telefone;
+    private String phone;
+    private Double valueMonthly;
 
     @ManyToOne
     @JoinColumn(name = "user_id")
