@@ -10,7 +10,6 @@ import java.util.List;
 public interface SpentRepository extends JpaRepository<Spent, Long> {
     List<Spent> findByUserId(Long userId);
 
-    //Soma total da receita
-    @Query("SELECT SUM(g.valor) FROM Gasto g WHERE g.user.id = :userId AND g.tipo = :tipo")
-    Double sumByUserIdAndTipo(@Param("userId") Long userId, @Param("tipo") String tipo);
+    @Query("SELECT SUM(s.price) FROM Spent s WHERE s.user.id = :userId AND s.type = :type")
+    Double sumByUserIdAndType(@Param("userId") Long userId, @Param("type") String type);
 }

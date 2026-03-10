@@ -12,8 +12,8 @@ public class DashboardService {
     private SpentRepository spentRepository;
 
     public DashboardDTO getDados(Long userId) {
-        Double receitas = spentRepository.sumByUserIdAndTipo(userId, "receita");
-        Double despesas = spentRepository.sumByUserIdAndTipo(userId, "despesa");
+        Double receitas = spentRepository.sumByUserIdAndType(userId, "income");
+        Double despesas = spentRepository.sumByUserIdAndType(userId, "expense");
 
         receitas = receitas != null ? receitas : 0.0;
         despesas = despesas != null ? despesas : 0.0;

@@ -9,10 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/auth")
@@ -37,5 +36,21 @@ public class AuthController {
         );
         String token = jwtUtil.gerarToken(request.getEmail());
         return ResponseEntity.ok(token);
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<List<User>> listar() {
+        return ResponseEntity.ok(userService.listarTodos());
+    }
+
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<String> deletar(@PathVariable Long id) {
+        userService.deletar(id);
+        return ResponseEntity.ok("Usuário deletado!");
+    }
+
+    @PutMapping("/update/{id}")
+    public ResponseEntity<User> atualizar(@PathVariable Long id, @RequestBody User user) {
+        return ResponseEntity.ok(userService.atualizar(id, user));
     }
 }
