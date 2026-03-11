@@ -28,7 +28,15 @@ public class JwtFilter extends OncePerRequestFilter {
                                     FilterChain chain)
             throws ServletException, IOException {
 
-        // Pega o token do Header
+        String path = req.getRequestURI();
+
+        // Libera rotas públicas sem processar token
+        if (path.startsWith("/auth/") || path.startsWith("/h2-console/") ||
+                "OPTIONS".equalsIgnoreCase(req.getMethod())) {
+            chain.doFilter(req, res);
+            return;
+        }
+
         String header = req.getHeader("Authorization");
 
         if (header != null && header.startsWith("Bearer ")) {
@@ -36,14 +44,17 @@ public class JwtFilter extends OncePerRequestFilter {
 
             if (jwtUtil.tokenValido(token)) {
                 String email = jwtUtil.extrairEmail(token);
-                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                // Retorna se está autenticado
-                UsernamePasswordAuthenticationToken auth =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails, null, userDetails.getAuthorities()
-                        );
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                try {
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails, null, userDetails.getAuthorities()
+                            );
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                } catch (Exception e) {
+                    // Usuário não existe mais, segue sem autenticar
+                }
             }
         }
 
