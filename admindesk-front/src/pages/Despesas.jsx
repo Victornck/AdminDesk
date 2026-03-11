@@ -4,42 +4,54 @@ import { useNavigate } from "react-router-dom";
 import { Sidebar, BottomNav, MobileDrawer, MenuButton } from "../components/Sidebar";
 import {
   Bell, Sun, Moon, Plus, X, Trash2, Pencil,
-  TrendingUp, TrendingDown, Wallet, Search, Calendar, FileText
+  TrendingUp, TrendingDown, Wallet, Search, Calendar, FileText, ArrowRight
 } from "lucide-react";
 
 const API_URL = "http://localhost:8080";
+function getToken() { return localStorage.getItem("token"); }
 
-function getToken() {
-  return localStorage.getItem("token");
-}
-
-const fmt = (value) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
-
-const fmtDate = (dateStr) => {
-  if (!dateStr) return "";
-  const [y, m, d] = dateStr.split("-");
+const fmt = (v) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
+const fmtDate = (s) => {
+  if (!s) return "";
+  const [y, m, d] = s.split("-");
   return `${d}/${m}/${y}`;
 };
 
 const EMPTY_FORM = { descriptor: "", price: "", data: "", type: "expense" };
-
 const blockEnter = (e) => { if (e.key === "Enter") e.preventDefault(); };
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
+// ── Modal Field ───────────────────────────────────────────────────────────────
+function ModalField({ label, icon: Icon, children }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[10px] font-bold tracking-[0.12em] uppercase text-white/30">{label}</label>
+      <div
+        className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl transition-all duration-150"
+        style={{
+          background: "rgba(255,255,255,0.05)",
+          border: `1px solid ${focused ? "rgba(163,230,53,0.4)" : "rgba(255,255,255,0.08)"}`,
+        }}
+        onFocusCapture={() => setFocused(true)}
+        onBlurCapture={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setFocused(false); }}
+      >
+        {Icon && <Icon size={14} className="text-white/25 shrink-0" />}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ── Modal Lançamento ──────────────────────────────────────────────────────────
 function SpentModal({ open, onClose, onSave, inicial }) {
   const [form, setForm] = useState(inicial || EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    setForm(inicial || EMPTY_FORM);
-    setSaving(false);
-  }, [inicial, open]);
-
+  useEffect(() => { setForm(inicial || EMPTY_FORM); setSaving(false); }, [inicial, open]);
   if (!open) return null;
 
   const handle = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-
   const submit = async () => {
     if (!form.descriptor.trim() || !form.price || !form.data || saving) return;
     setSaving(true);
@@ -47,116 +59,93 @@ function SpentModal({ open, onClose, onSave, inicial }) {
     setSaving(false);
   };
 
+  const isExpense = form.type === "expense";
+
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
       <div
-        className="relative bg-white dark:bg-[#1a1025] border border-gray-200 dark:border-purple-900/30 rounded-2xl w-full max-w-md p-6 shadow-2xl"
+        className="relative w-full max-w-md rounded-2xl p-6 shadow-2xl"
+        style={{ background: "#0b1320", border: "1px solid rgba(255,255,255,0.08)" }}
         onKeyDown={blockEnter}
       >
+        {/* brilho topo dinâmico */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-px transition-all duration-300"
+          style={{ background: isExpense
+            ? "linear-gradient(90deg,transparent,rgba(239,68,68,0.6),transparent)"
+            : "linear-gradient(90deg,transparent,rgba(163,230,53,0.6),transparent)" }} />
+
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-            {inicial?.id ? "Editar Lançamento" : "Novo Lançamento"}
-          </h2>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition">
-            <X size={20} />
+          <div>
+            <h2 className="text-sm font-semibold text-white" style={{ letterSpacing: "-0.01em" }}>
+              {inicial?.id ? "Editar Lançamento" : "Novo Lançamento"}
+            </h2>
+            <p className="text-[11px] text-white/30 mt-0.5">Preencha os dados abaixo</p>
+          </div>
+          <button type="button" onClick={onClose}
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-white/5"
+            style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+            <X size={14} className="text-white/35" />
           </button>
         </div>
 
         <div className="flex flex-col gap-4">
-
-          {/* Tipo */}
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setForm({ ...form, type: "expense" })}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition flex items-center justify-center gap-2 ${
-                form.type === "expense"
-                  ? "bg-red-500/10 border-red-500/40 text-red-400"
-                  : "border-gray-200 dark:border-purple-900/30 text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5"
-              }`}
-            >
-              <TrendingDown size={15} /> Despesa
-            </button>
-            <button
-              type="button"
-              onClick={() => setForm({ ...form, type: "income" })}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition flex items-center justify-center gap-2 ${
-                form.type === "income"
-                  ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-400"
-                  : "border-gray-200 dark:border-purple-900/30 text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5"
-              }`}
-            >
-              <TrendingUp size={15} /> Receita
-            </button>
+          {/* Toggle tipo */}
+          <div className="flex p-1 rounded-xl gap-1"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            {[
+              { key: "expense", label: "Despesa", Icon: TrendingDown, color: "#ef4444", bg: "rgba(239,68,68,0.12)", br: "rgba(239,68,68,0.25)" },
+              { key: "income",  label: "Receita",  Icon: TrendingUp,  color: "#a3e635", bg: "rgba(163,230,53,0.10)", br: "rgba(163,230,53,0.25)" },
+            ].map(({ key, label, Icon, color, bg, br }) => {
+              const active = form.type === key;
+              return (
+                <button key={key} type="button" onClick={() => setForm({ ...form, type: key })}
+                  className="flex-1 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
+                  style={active
+                    ? { background: bg, color, border: `1px solid ${br}` }
+                    : { color: "rgba(255,255,255,0.3)", border: "1px solid transparent" }
+                  }>
+                  <Icon size={13} /> {label}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Descrição */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Descrição *</label>
-            <div className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-purple-900/30 rounded-xl px-3 py-2.5 focus-within:border-purple-500 transition">
-              <FileText size={15} className="text-gray-400 shrink-0" />
-              <input
-                type="text"
-                name="descriptor"
-                value={form.descriptor}
-                onChange={handle}
-                placeholder="Ex: Salário, Aluguel, Freelance..."
-                autoComplete="off"
-                className="bg-transparent text-sm text-gray-800 dark:text-white outline-none w-full placeholder:text-gray-400"
-              />
-            </div>
-          </div>
+          <ModalField label="Descrição *" icon={FileText}>
+            <input type="text" name="descriptor" value={form.descriptor} onChange={handle}
+              placeholder="Ex: Salário, Aluguel, Freelance…" autoComplete="off"
+              className="bg-transparent text-sm text-white outline-none w-full placeholder:text-white/20"
+              style={{ caretColor: "#a3e635" }} />
+          </ModalField>
 
-          {/* Valor */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Valor *</label>
-            <div className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-purple-900/30 rounded-xl px-3 py-2.5 focus-within:border-purple-500 transition">
-              <span className="text-sm text-gray-400 shrink-0">R$</span>
-              <input
-                type="number"
-                name="price"
-                min="0"
-                step="0.01"
-                value={form.price}
-                onChange={handle}
-                placeholder="0,00"
-                className="bg-transparent text-sm text-gray-800 dark:text-white outline-none w-full placeholder:text-gray-400"
-              />
-            </div>
-          </div>
+          <ModalField label="Valor *">
+            <span className="text-xs text-white/25 shrink-0">R$</span>
+            <input type="number" name="price" min="0" step="0.01"
+              value={form.price} onChange={handle} placeholder="0,00"
+              className="bg-transparent text-sm text-white outline-none w-full placeholder:text-white/20"
+              style={{ caretColor: "#a3e635" }} />
+          </ModalField>
 
-          {/* Data */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Data *</label>
-            <div className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-purple-900/30 rounded-xl px-3 py-2.5 focus-within:border-purple-500 transition">
-              <Calendar size={15} className="text-gray-400 shrink-0" />
-              <input
-                type="date"
-                name="data"
-                value={form.data}
-                onChange={handle}
-                className="bg-transparent text-sm text-gray-800 dark:text-white outline-none w-full placeholder:text-gray-400"
-              />
-            </div>
-          </div>
+          <ModalField label="Data *" icon={Calendar}>
+            <input type="date" name="data" value={form.data} onChange={handle}
+              className="bg-transparent text-sm text-white outline-none w-full"
+              style={{ caretColor: "#a3e635", colorScheme: "dark" }} />
+          </ModalField>
         </div>
 
         <div className="flex gap-3 mt-6">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-purple-900/30 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition"
-          >
+          <button type="button" onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl text-sm text-white/35 transition-colors hover:text-white/60"
+            style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
             Cancelar
           </button>
-          <button
-            type="button"
-            onClick={submit}
+          <button type="button" onClick={submit}
             disabled={saving || !form.descriptor.trim() || !form.price || !form.data}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition shadow-lg shadow-purple-900/30"
-          >
-            {saving ? "Salvando..." : inicial?.id ? "Salvar alterações" : "Cadastrar"}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-black flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+            style={{ background: "linear-gradient(135deg,#a3e635,#65a30d)" }}>
+            {saving
+              ? <><span className="w-3.5 h-3.5 border-2 border-black/20 border-t-black rounded-full animate-spin" /> Salvando…</>
+              : <>{inicial?.id ? "Salvar" : "Cadastrar"} <ArrowRight size={13} /></>}
           </button>
         </div>
       </div>
@@ -170,25 +159,35 @@ function DeleteModal({ open, item, onConfirm, onClose }) {
   if (!open || !item) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white dark:bg-[#1a1025] border border-gray-200 dark:border-red-900/30 rounded-2xl w-full max-w-sm p-6 shadow-2xl">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
+      <div className="relative w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+        style={{ background: "#0b1320", border: "1px solid rgba(239,68,68,0.18)" }}>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-px"
+          style={{ background: "linear-gradient(90deg,transparent,rgba(239,68,68,0.6),transparent)" }} />
         <div className="flex flex-col items-center gap-4 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center">
-            <Trash2 size={22} className="text-red-400" />
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center"
+            style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)" }}>
+            <Trash2 size={18} className="text-red-400" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Deletar lançamento?</h3>
-            <p className="text-sm text-gray-400 mt-1">
-              Tem certeza que deseja remover <strong className="text-gray-700 dark:text-gray-200">{item.descriptor}</strong>? Esta ação não pode ser desfeita.
+            <p className="text-sm font-semibold text-white">Remover lançamento?</p>
+            <p className="text-xs text-white/40 mt-1.5 leading-relaxed">
+              Você está prestes a remover{" "}
+              <span className="text-white/75 font-medium">{item.descriptor}</span>.<br />
+              Esta ação não pode ser desfeita.
             </p>
           </div>
         </div>
         <div className="flex gap-3 mt-6">
-          <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-purple-900/30 text-sm text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5 transition">
+          <button type="button" onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl text-sm text-white/35 hover:text-white/60 transition-colors"
+            style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
             Cancelar
           </button>
-          <button type="button" onClick={onConfirm} className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition">
-            Deletar
+          <button type="button" onClick={onConfirm}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white hover:brightness-110 transition-all"
+            style={{ background: "linear-gradient(135deg,#ef4444,#dc2626)" }}>
+            Remover
           </button>
         </div>
       </div>
@@ -200,7 +199,7 @@ function DeleteModal({ open, item, onConfirm, onClose }) {
 // ── Página ────────────────────────────────────────────────────────────────────
 export default function Despesas() {
   const navigate = useNavigate();
-  const [darkMode, setDarkMode] = useState(true);
+  const [dm, setDm] = useState(true); // dm = darkMode
   const [mobileOpen, setMobileOpen] = useState(false);
   const [spents, setSpents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -210,30 +209,17 @@ export default function Despesas() {
   const [editando, setEditando] = useState(null);
   const [deletando, setDeletando] = useState(null);
 
-  const toggleTheme = () => {
-    setDarkMode(!darkMode);
-    document.documentElement.classList.toggle("dark");
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
+  const toggleTheme = () => { setDm(!dm); document.documentElement.classList.toggle("dark"); };
+  const handleLogout = () => { localStorage.removeItem("token"); navigate("/login"); };
 
   const fetchSpents = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/spents`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
+      const res = await fetch(`${API_URL}/spents`, { headers: { Authorization: `Bearer ${getToken()}` } });
       if (res.status === 401) { handleLogout(); return; }
-      const data = await res.json();
-      setSpents(data);
-    } catch (e) {
-      console.error("Erro ao buscar lançamentos:", e);
-    } finally {
-      setLoading(false);
-    }
+      setSpents(await res.json());
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => { fetchSpents(); }, []);
@@ -246,7 +232,7 @@ export default function Despesas() {
         body: JSON.stringify(form),
       });
       if (res.ok) { await fetchSpents(); setModalOpen(false); }
-    } catch (e) { console.error("Erro ao criar:", e); }
+    } catch (e) { console.error(e); }
   };
 
   const handleEditar = async (form) => {
@@ -257,7 +243,7 @@ export default function Despesas() {
         body: JSON.stringify(form),
       });
       if (res.ok) { await fetchSpents(); setModalOpen(false); setEditando(null); }
-    } catch (e) { console.error("Erro ao editar:", e); }
+    } catch (e) { console.error(e); }
   };
 
   const handleDeletar = async () => {
@@ -267,202 +253,299 @@ export default function Despesas() {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.ok) { await fetchSpents(); setDeletando(null); }
-    } catch (e) { console.error("Erro ao deletar:", e); }
+    } catch (e) { console.error(e); }
   };
 
-  const totalReceitas = spents.filter(s => s.type === "income").reduce((acc, s) => acc + s.price, 0);
-  const totalDespesas = spents.filter(s => s.type === "expense").reduce((acc, s) => acc + s.price, 0);
+  const totalReceitas = spents.filter(s => s.type === "income").reduce((a, s) => a + s.price, 0);
+  const totalDespesas = spents.filter(s => s.type === "expense").reduce((a, s) => a + s.price, 0);
+  const saldo = totalReceitas - totalDespesas;
 
-  const filtrados = spents.filter((s) => {
-    const matchSearch = s.descriptor?.toLowerCase().includes(search.toLowerCase());
-    const matchTipo = filtroTipo === "all" || s.type === filtroTipo;
-    return matchSearch && matchTipo;
-  });
+  const filtrados = spents.filter((s) =>
+    s.descriptor?.toLowerCase().includes(search.toLowerCase()) &&
+    (filtroTipo === "all" || s.type === filtroTipo)
+  );
+
+  // ── tema ──
+  const bgPage   = dm ? "#080d14" : "#f0f2f5";
+  const bgCard   = dm ? "#0d1824" : "#ffffff";
+  const bdCard   = dm ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.09)";
+  const txPrimary= dm ? "#f1f5f9"  : "#0f172a";
+  const txSub    = dm ? "#94a3b8"  : "#475569";
+  const txMuted  = dm ? "rgba(255,255,255,0.28)" : "#94a3b8";
+  const bdDiv    = dm ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.07)";
+  const bgInput  = dm ? "rgba(255,255,255,0.04)" : "#f8fafc";
+  const bdInput  = dm ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.10)";
+  const bgHeader = dm ? "rgba(8,13,20,0.88)" : "rgba(240,242,245,0.92)";
 
   return (
-    <div className={darkMode ? "dark" : ""}>
-      <div className="min-h-screen bg-gray-50 dark:bg-[#0d0816] text-gray-900 dark:text-white font-sans flex transition-colors duration-300">
+    <div className={dm ? "dark" : ""}>
+      <div className="min-h-screen flex font-sans" style={{ background: bgPage, color: txPrimary }}>
 
         <Sidebar onLogout={handleLogout} />
         <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
 
         <main className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-0">
 
-          <header className="sticky top-0 z-10 bg-white/80 dark:bg-[#0d0816]/80 backdrop-blur-md border-b border-gray-200 dark:border-purple-900/20 px-4 md:px-8 py-4 flex items-center justify-between">
+          {/* ── Header ── */}
+          <header
+            className="sticky top-0 z-10 backdrop-blur-xl px-4 md:px-8 py-3 flex items-center justify-between"
+            style={{ background: bgHeader, borderBottom: `1px solid ${bdDiv}` }}
+          >
             <div className="flex items-center gap-4">
               <MenuButton onClick={() => setMobileOpen(true)} />
               <div>
-                <h1 className="text-base md:text-lg font-semibold">Despesas & Receitas</h1>
-                <p className="text-xs text-gray-400 hidden md:block">{spents.length} lançamentos registrados</p>
+                <p className="text-sm font-semibold" style={{ color: txPrimary, letterSpacing: "-0.01em" }}>
+                  Despesas & Receitas
+                </p>
+                <p className="text-[11px] hidden md:block" style={{ color: txMuted }}>
+                  {spents.length} {spents.length === 1 ? "lançamento" : "lançamentos"}
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={toggleTheme} className="p-2 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-purple-900/30 text-gray-400 hover:text-gray-700 dark:hover:text-white transition">
-                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+
+            <div className="flex items-center gap-2">
+              <button onClick={toggleTheme}
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-105"
+                style={{ background: dm ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${bdCard === "#ffffff" ? "rgba(0,0,0,0.09)" : "rgba(255,255,255,0.07)"}` }}>
+                {dm
+                  ? <Sun size={15} style={{ color: txMuted }} />
+                  : <Moon size={15} style={{ color: txSub }} />}
               </button>
-              <button type="button" className="relative p-2 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-purple-900/30 text-gray-400">
-                <Bell size={18} />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-purple-500 rounded-full" />
+              <button className="relative w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: dm ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${bdCard === "#ffffff" ? "rgba(0,0,0,0.09)" : "rgba(255,255,255,0.07)"}` }}>
+                <Bell size={15} style={{ color: txMuted }} />
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-lime-400" />
               </button>
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-violet-700 flex items-center justify-center text-xs font-bold text-white">JS</div>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-black"
+                style={{ background: "linear-gradient(135deg,#a3e635,#65a30d)" }}>
+                JS
+              </div>
             </div>
           </header>
 
-          <div className="p-4 md:p-8 flex flex-col gap-6">
+          {/* ── Conteúdo ── */}
+          <div className="p-4 md:p-8 flex flex-col gap-5">
 
-            {/* Resumo */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white dark:bg-[#130d1f] border border-gray-200 dark:border-purple-900/20 rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-                  <TrendingUp size={18} className="text-emerald-500" />
+            {/* KPI Cards */}
+            <div className="grid grid-cols-3 gap-4">
+
+              {/* Receitas */}
+              <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden transition-transform hover:-translate-y-0.5"
+                style={{ background: bgCard, border: `1px solid ${bdCard}` }}>
+                <div className="absolute top-0 right-0 w-28 h-28 rounded-full pointer-events-none"
+                  style={{ background: "#a3e635", opacity: 0.07, filter: "blur(28px)", transform: "translate(30%,-30%)" }} />
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold tracking-[0.12em] uppercase" style={{ color: txMuted }}>Receitas</span>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(163,230,53,0.12)" }}>
+                    <TrendingUp size={13} style={{ color: "#a3e635" }} />
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-400">Total Receitas</p>
-                  <p className="text-base font-bold text-emerald-500">{fmt(totalReceitas)}</p>
-                </div>
+                <p className="text-xl font-bold" style={{ color: dm ? "#a3e635" : "#166534", letterSpacing: "-0.02em" }}>
+                  {fmt(totalReceitas)}
+                </p>
               </div>
-              <div className="bg-white dark:bg-[#130d1f] border border-gray-200 dark:border-purple-900/20 rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
-                  <TrendingDown size={18} className="text-red-400" />
+
+              {/* Despesas */}
+              <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden transition-transform hover:-translate-y-0.5"
+                style={{ background: bgCard, border: `1px solid ${bdCard}` }}>
+                <div className="absolute top-0 right-0 w-28 h-28 rounded-full pointer-events-none"
+                  style={{ background: "#ef4444", opacity: 0.07, filter: "blur(28px)", transform: "translate(30%,-30%)" }} />
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold tracking-[0.12em] uppercase" style={{ color: txMuted }}>Despesas</span>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(239,68,68,0.12)" }}>
+                    <TrendingDown size={13} style={{ color: "#ef4444" }} />
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-400">Total Despesas</p>
-                  <p className="text-base font-bold text-red-400">{fmt(totalDespesas)}</p>
-                </div>
+                <p className="text-xl font-bold" style={{ color: dm ? "#f87171" : "#991b1b", letterSpacing: "-0.02em" }}>
+                  {fmt(totalDespesas)}
+                </p>
               </div>
-              <div className="bg-white dark:bg-[#130d1f] border border-gray-200 dark:border-purple-900/20 rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
-                  <Wallet size={18} className="text-purple-400" />
+
+              {/* Saldo */}
+              <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden transition-transform hover:-translate-y-0.5"
+                style={{
+                  background: saldo >= 0
+                    ? dm ? "linear-gradient(135deg,#091a0d,#0b1f10)" : "linear-gradient(135deg,#f0fdf4,#dcfce7)"
+                    : dm ? "linear-gradient(135deg,#1a0909,#1f0b0b)" : "linear-gradient(135deg,#fff1f2,#ffe4e6)",
+                  border: `1px solid ${saldo >= 0
+                    ? dm ? "rgba(163,230,53,0.18)" : "rgba(22,163,74,0.2)"
+                    : dm ? "rgba(239,68,68,0.18)" : "rgba(220,38,38,0.2)"}`,
+                }}>
+                <div className="absolute top-0 right-0 w-28 h-28 rounded-full pointer-events-none"
+                  style={{ background: saldo >= 0 ? "#a3e635" : "#ef4444", opacity: 0.1, filter: "blur(28px)", transform: "translate(30%,-30%)" }} />
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold tracking-[0.12em] uppercase"
+                    style={{ color: saldo >= 0 ? (dm ? "rgba(163,230,53,0.65)" : "#15803d") : (dm ? "rgba(239,68,68,0.65)" : "#b91c1c") }}>
+                    Saldo
+                  </span>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                    style={{ background: saldo >= 0 ? "rgba(163,230,53,0.12)" : "rgba(239,68,68,0.12)" }}>
+                    <Wallet size={13} style={{ color: saldo >= 0 ? (dm ? "#a3e635" : "#15803d") : (dm ? "#f87171" : "#dc2626") }} />
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-400">Saldo</p>
-                  <p className={`text-base font-bold ${totalReceitas - totalDespesas >= 0 ? "text-purple-400" : "text-red-400"}`}>
-                    {fmt(totalReceitas - totalDespesas)}
-                  </p>
-                </div>
+                <p className="text-xl font-bold" style={{ color: saldo >= 0 ? (dm ? "#a3e635" : "#15803d") : (dm ? "#f87171" : "#dc2626"), letterSpacing: "-0.02em" }}>
+                  {fmt(saldo)}
+                </p>
               </div>
             </div>
 
-            {/* Filtros + Botão */}
+            {/* Toolbar */}
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-              <div className="flex gap-2 flex-wrap">
-                <div className="flex items-center gap-2 bg-white dark:bg-white/5 border border-gray-200 dark:border-purple-900/30 rounded-xl px-3 py-2.5 w-full sm:w-64 focus-within:border-purple-500 transition">
-                  <Search size={15} className="text-gray-400 shrink-0" />
+              <div className="flex flex-wrap gap-2 items-center">
+
+                {/* Search */}
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
+                  style={{ background: bgInput, border: `1px solid ${bdInput}`, minWidth: 220 }}>
+                  <Search size={13} style={{ color: txMuted, flexShrink: 0 }} />
                   <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Buscar descrição..."
-                    className="bg-transparent text-sm text-gray-700 dark:text-gray-300 outline-none w-full placeholder:text-gray-400"
+                    type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Buscar descrição…"
+                    className="bg-transparent outline-none w-full text-sm"
+                    style={{ color: txPrimary, caretColor: "#a3e635" }}
                   />
+                  {search && (
+                    <button onClick={() => setSearch("")} style={{ color: txMuted, cursor: "pointer", flexShrink: 0 }}>
+                      <X size={12} />
+                    </button>
+                  )}
                 </div>
-                {["all", "income", "expense"].map((tipo) => (
-                  <button
-                    key={tipo}
-                    type="button"
-                    onClick={() => setFiltroTipo(tipo)}
-                    className={`px-3 py-2 rounded-xl text-xs font-medium border transition ${
-                      filtroTipo === tipo
-                        ? "bg-purple-600 border-purple-600 text-white"
-                        : "border-gray-200 dark:border-purple-900/30 text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5"
-                    }`}
-                  >
-                    {tipo === "all" ? "Todos" : tipo === "income" ? "Receitas" : "Despesas"}
-                  </button>
-                ))}
+
+                {/* Filtro tipo */}
+                <div className="flex items-center gap-1 p-1 rounded-xl"
+                  style={{ background: dm ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)", border: `1px solid ${bdDiv}` }}>
+                  {[
+                    { key: "all",     label: "Todos" },
+                    { key: "income",  label: "Receitas" },
+                    { key: "expense", label: "Despesas" },
+                  ].map(({ key, label }) => {
+                    const active = filtroTipo === key;
+                    const styles = {
+                      all:     { c: dm ? "#f1f5f9" : "#0f172a", bg: dm ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)", bd: dm ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)" },
+                      income:  { c: dm ? "#a3e635" : "#15803d",  bg: "rgba(163,230,53,0.1)",  bd: "rgba(163,230,53,0.22)" },
+                      expense: { c: dm ? "#f87171" : "#dc2626",  bg: "rgba(239,68,68,0.1)",   bd: "rgba(239,68,68,0.22)" },
+                    };
+                    return (
+                      <button key={key} type="button" onClick={() => setFiltroTipo(key)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                        style={active
+                          ? { background: styles[key].bg, color: styles[key].c, border: `1px solid ${styles[key].bd}` }
+                          : { color: txMuted, border: "1px solid transparent" }}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => { setEditando(null); setModalOpen(true); }}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition shadow-lg shadow-purple-900/30 shrink-0"
-              >
-                <Plus size={16} /> Novo Lançamento
+
+              <button type="button" onClick={() => { setEditando(null); setModalOpen(true); }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-black transition-all hover:brightness-110 shrink-0"
+                style={{ background: "linear-gradient(135deg,#a3e635,#65a30d)", boxShadow: "0 0 20px rgba(163,230,53,0.18)" }}>
+                <Plus size={15} /> Novo Lançamento
               </button>
             </div>
 
             {/* Lista */}
             {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+              <div className="flex flex-col gap-2">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="h-14 rounded-xl animate-pulse"
+                    style={{ background: dm ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.05)" }} />
+                ))}
               </div>
+
             ) : filtrados.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center">
-                  <Wallet size={28} className="text-purple-400" />
+              <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                  style={{ background: dm ? "rgba(163,230,53,0.08)" : "rgba(22,163,74,0.08)", border: `1px solid ${dm ? "rgba(163,230,53,0.15)" : "rgba(22,163,74,0.15)"}` }}>
+                  <Wallet size={24} style={{ color: dm ? "#a3e635" : "#15803d" }} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Nenhum lançamento encontrado</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {search ? "Tente outro termo de busca" : "Comece registrando sua primeira receita ou despesa"}
+                  <p className="text-sm font-semibold" style={{ color: txPrimary }}>
+                    {search ? "Nenhum resultado encontrado" : "Sem lançamentos"}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: txSub }}>
+                    {search ? `Nenhum lançamento para "${search}"` : "Registre sua primeira receita ou despesa"}
                   </p>
                 </div>
                 {!search && (
-                  <button
-                    type="button"
-                    onClick={() => { setEditando(null); setModalOpen(true); }}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition"
-                  >
-                    <Plus size={15} /> Novo lançamento
+                  <button type="button" onClick={() => { setEditando(null); setModalOpen(true); }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-black hover:brightness-110 transition-all"
+                    style={{ background: "linear-gradient(135deg,#a3e635,#65a30d)" }}>
+                    <Plus size={14} /> Novo lançamento
                   </button>
                 )}
               </div>
+
             ) : (
-              <div className="bg-white dark:bg-[#130d1f] border border-gray-200 dark:border-purple-900/20 rounded-2xl overflow-hidden">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-purple-900/20">
-                      <th className="text-left text-xs text-gray-400 font-medium p-4">Descrição</th>
-                      <th className="text-left text-xs text-gray-400 font-medium p-4 hidden sm:table-cell">Data</th>
-                      <th className="text-left text-xs text-gray-400 font-medium p-4">Tipo</th>
-                      <th className="text-right text-xs text-gray-400 font-medium p-4">Valor</th>
-                      <th className="p-4" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtrados.map((s) => (
-                      <tr key={s.id} className="border-b border-gray-50 dark:border-purple-900/10 hover:bg-gray-50 dark:hover:bg-white/5 transition group">
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                              s.type === "income" ? "bg-emerald-500/10" : "bg-red-500/10"
-                            }`}>
-                              {s.type === "income"
-                                ? <TrendingUp size={14} className="text-emerald-500" />
-                                : <TrendingDown size={14} className="text-red-400" />
-                              }
-                            </div>
-                            <span className="text-sm font-medium text-gray-800 dark:text-white">{s.descriptor}</span>
-                          </div>
-                        </td>
-                        <td className="p-4 text-xs text-gray-400 hidden sm:table-cell">{fmtDate(s.data)}</td>
-                        <td className="p-4">
-                          <span className={`text-xs px-2 py-1 rounded-lg font-medium ${
-                            s.type === "income"
-                              ? "bg-emerald-500/10 text-emerald-500"
-                              : "bg-red-500/10 text-red-400"
-                          }`}>
-                            {s.type === "income" ? "Receita" : "Despesa"}
-                          </span>
-                        </td>
-                        <td className={`p-4 text-right text-sm font-bold ${
-                          s.type === "income" ? "text-emerald-500" : "text-red-400"
-                        }`}>
-                          {s.type === "income" ? "+" : "-"}{fmt(s.price)}
-                        </td>
-                        <td className="p-4">
-                          <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button type="button" onClick={() => { setEditando(s); setModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-purple-500 hover:bg-purple-500/10 transition">
-                              <Pencil size={14} />
-                            </button>
-                            <button type="button" onClick={() => setDeletando(s)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition">
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="rounded-2xl overflow-hidden"
+                style={{ background: bgCard, border: `1px solid ${bdCard}` }}>
+
+                {/* Header tabela */}
+                <div className="grid px-5 py-3 items-center"
+                  style={{ gridTemplateColumns: "1fr 96px 88px 112px 56px", borderBottom: `1px solid ${bdDiv}` }}>
+                  {["Descrição", "Data", "Tipo", "Valor", ""].map((h) => (
+                    <span key={h} className="text-[10px] font-bold tracking-[0.12em] uppercase" style={{ color: txMuted }}>{h}</span>
+                  ))}
+                </div>
+
+                {/* Rows */}
+                {filtrados.map((s, i) => (
+                  <div key={s.id}
+                    className="grid px-5 py-3.5 items-center group transition-colors cursor-default"
+                    style={{
+                      gridTemplateColumns: "1fr 96px 88px 112px 56px",
+                      borderBottom: i < filtrados.length - 1 ? `1px solid ${bdDiv}` : "none",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = dm ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.025)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                  >
+                    {/* Descrição */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ background: s.type === "income" ? "rgba(163,230,53,0.1)" : "rgba(239,68,68,0.1)" }}>
+                        {s.type === "income"
+                          ? <TrendingUp  size={12} style={{ color: "#a3e635" }} />
+                          : <TrendingDown size={12} style={{ color: "#ef4444" }} />
+                        }
+                      </div>
+                      <span className="text-sm font-medium truncate" style={{ color: txPrimary }}>{s.descriptor}</span>
+                    </div>
+
+                    {/* Data */}
+                    <span className="text-xs font-mono" style={{ color: txSub }}>{fmtDate(s.data)}</span>
+
+                    {/* Badge */}
+                    <span className="text-[11px] font-semibold px-2 py-1 rounded-lg inline-block"
+                      style={s.type === "income"
+                        ? { background: dm ? "rgba(163,230,53,0.08)" : "rgba(22,163,74,0.08)", color: dm ? "#a3e635" : "#15803d", border: `1px solid ${dm ? "rgba(163,230,53,0.18)" : "rgba(22,163,74,0.2)"}` }
+                        : { background: dm ? "rgba(239,68,68,0.08)" : "rgba(220,38,38,0.06)", color: dm ? "#f87171" : "#dc2626", border: `1px solid ${dm ? "rgba(239,68,68,0.18)" : "rgba(220,38,38,0.15)"}` }
+                      }>
+                      {s.type === "income" ? "Receita" : "Despesa"}
+                    </span>
+
+                    {/* Valor */}
+                    <span className="text-sm font-bold tabular-nums"
+                      style={{ color: s.type === "income" ? (dm ? "#a3e635" : "#15803d") : (dm ? "#f87171" : "#dc2626") }}>
+                      {s.type === "income" ? "+" : "−"}{fmt(s.price)}
+                    </span>
+
+                    {/* Ações */}
+                    <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                      {[
+                        { action: () => { setEditando(s); setModalOpen(true); }, Icon: Pencil, hoverBd: "rgba(163,230,53,0.35)" },
+                        { action: () => setDeletando(s), Icon: Trash2, hoverBd: "rgba(239,68,68,0.35)" },
+                      ].map(({ action, Icon, hoverBd }, idx) => (
+                        <button key={idx} type="button" onClick={action}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                          style={{ border: `1px solid ${bdDiv}`, background: "transparent" }}
+                          onMouseEnter={e => e.currentTarget.style.borderColor = hoverBd}
+                          onMouseLeave={e => e.currentTarget.style.borderColor = bdDiv}>
+                          <Icon size={11} style={{ color: txSub }} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
