@@ -1,141 +1,163 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { Sidebar, BottomNav, MobileDrawer, MenuButton } from "../components/Sidebar";
+import { Sidebar, BottomNav, MobileDrawer } from "../components/Sidebar";
+import { PageHeader } from "../components/PageHeader";
 import {
-  Bell, Sun, Moon, Search, Plus, X,
-  Pencil, Trash2, User, Mail, Phone, Users, DollarSign, ChevronRight
+  Plus, X, Trash2, Pencil, Search, Users, Phone, Mail,
+  ArrowRight, TrendingUp, Wallet, RefreshCw,
+  LayoutGrid, List, DollarSign,
 } from "lucide-react";
 
-const API_URL = "http://localhost:8080";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+function getToken() { return localStorage.getItem("token") ?? ""; }
 
-const fmt = (value) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
-
-function getToken() {
-  return localStorage.getItem("token");
-}
-
-// Gera uma cor neutra baseada na inicial — sem gradientes chamativos
-function avatarBg(name) {
-  const palettes = [
-    { bg: "bg-sky-100 dark:bg-sky-900/40", text: "text-sky-700 dark:text-sky-300" },
-    { bg: "bg-violet-100 dark:bg-violet-900/40", text: "text-violet-700 dark:text-violet-300" },
-    { bg: "bg-emerald-100 dark:bg-emerald-900/40", text: "text-emerald-700 dark:text-emerald-300" },
-    { bg: "bg-amber-100 dark:bg-amber-900/40", text: "text-amber-700 dark:text-amber-300" },
-    { bg: "bg-rose-100 dark:bg-rose-900/40", text: "text-rose-700 dark:text-rose-300" },
-  ];
-  return palettes[name.charCodeAt(0) % palettes.length];
-}
+const fmt = (v) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
+const fmtPhone = (v = "") =>
+  v.replace(/\D/g, "").replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{5})(\d{1,4})$/, "$1-$2").slice(0, 15);
 
 const EMPTY_FORM = { name: "", email: "", phone: "", valueMonthly: "" };
 const blockEnter = (e) => { if (e.key === "Enter") e.preventDefault(); };
 
-// ── Field ────────────────────────────────────────────────────────────────────
-function Field({ label, icon: Icon, children }) {
+// ─── ModalField ───────────────────────────────────────────────────────────────
+function ModalField({ label, icon: Icon, children }) {
+  const [focused, setFocused] = useState(false);
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">{label}</label>
-      <div className="flex items-center gap-2.5 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2.5 focus-within:border-zinc-400 dark:focus-within:border-zinc-500 transition-colors">
-        <Icon size={14} className="text-zinc-400 shrink-0" />
+    <div className="flex flex-col gap-1.5">
+      <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+        textTransform: "uppercase", color: "var(--tx-muted)" }}>
+        {label}
+      </label>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10, padding: "12px 14px",
+        borderRadius: 12, transition: "all 0.15s", background: "var(--bg-input)",
+        border: focused ? "1px solid var(--accent)" : "1px solid var(--bd-input)",
+        boxShadow: focused ? "0 0 0 3px var(--accent-ring)" : "none",
+      }}
+        onFocusCapture={() => setFocused(true)}
+        onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget)) setFocused(false); }}>
+        {Icon && <Icon size={14} style={{ color: "var(--tx-muted)", flexShrink: 0 }} />}
         {children}
       </div>
     </div>
   );
 }
 
-// ── Modal Criar/Editar ────────────────────────────────────────────────────────
+// ─── ClienteModal ─────────────────────────────────────────────────────────────
 function ClienteModal({ open, onClose, onSave, inicial }) {
-  const [form, setForm] = useState(inicial || EMPTY_FORM);
+  const [form,   setForm]   = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setForm(inicial || EMPTY_FORM);
+    setForm(inicial
+      ? { name: inicial.name || "", email: inicial.email || "",
+          phone: inicial.phone || "", valueMonthly: inicial.valueMonthly ?? "" }
+      : EMPTY_FORM);
     setSaving(false);
   }, [inicial, open]);
 
   if (!open) return null;
 
-  const handle = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handle      = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  const handlePhone = (e) => setForm(f => ({ ...f, phone: fmtPhone(e.target.value) }));
+  const valorNum    = parseFloat(String(form.valueMonthly).replace(",", ".")) || 0;
 
-  const submit = async () => {
-    if (!form.name.trim() || saving) return;
+  async function submit() {
+    if (!form.name.trim() || !form.email.trim() || saving) return;
     setSaving(true);
-    await onSave({ ...form, valueMonthly: parseFloat(form.valueMonthly) || 0 });
+    await onSave({ name: form.name.trim(), email: form.email.trim(),
+      phone: form.phone || "", valueMonthly: valorNum });
     setSaving(false);
-  };
+  }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div
-        className="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl"
-        onKeyDown={blockEnter}
-      >
-        {/* Handle mobile */}
-        <div className="flex justify-center pt-3 pb-1 sm:hidden">
-          <div className="w-10 h-1 rounded-full bg-zinc-200 dark:bg-zinc-700" />
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 backdrop-blur-md"
+        style={{ background: "rgba(0,0,0,0.50)" }} onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-2xl p-6 shadow-2xl"
+        style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}
+        onKeyDown={blockEnter}>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-px"
+          style={{ background: "linear-gradient(90deg,transparent,var(--accent),transparent)", opacity: 0.65 }} />
 
-        <div className="flex items-center justify-between px-6 pt-4 pb-4 border-b border-zinc-100 dark:border-zinc-800">
-          <div>
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-              {inicial?.id ? "Editar cliente" : "Novo cliente"}
-            </h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              {inicial?.id ? `Editando #${inicial.id}` : "Preencha os dados abaixo"}
-            </p>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center"
+              style={{ background: "var(--accent-muted)" }}>
+              <TrendingUp size={12} style={{ color: "var(--accent)" }} />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold" style={{ color: "var(--tx-primary)" }}>
+                {inicial?.id ? "Editar Cliente" : "Novo Cliente"}
+              </h2>
+              <p className="text-[11px]" style={{ color: "var(--tx-muted)" }}>
+                O valor mensal entrará no lucro do dashboard
+              </p>
+            </div>
           </div>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-            <X size={16} />
+          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ border: "1px solid var(--bd-card)" }}
+            onMouseEnter={e => e.currentTarget.style.background = "var(--bg-subtle)"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+            <X size={14} style={{ color: "var(--tx-muted)" }} />
           </button>
         </div>
 
-        <div className="p-6 flex flex-col gap-3">
-          <Field label="Nome *" icon={User}>
-            <input
-              type="text" name="name" value={form.name} onChange={handle}
-              placeholder="Nome completo" autoComplete="off"
-              className="bg-transparent text-sm text-zinc-800 dark:text-zinc-100 outline-none w-full placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
-            />
-          </Field>
-          <Field label="Email" icon={Mail}>
-            <input
-              type="text" name="email" value={form.email} onChange={handle}
-              placeholder="email@exemplo.com" autoComplete="off"
-              className="bg-transparent text-sm text-zinc-800 dark:text-zinc-100 outline-none w-full placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
-            />
-          </Field>
-          <Field label="Telefone" icon={Phone}>
-            <input
-              type="text" name="phone" value={form.phone} onChange={handle}
-              placeholder="(11) 99999-0000" autoComplete="off"
-              className="bg-transparent text-sm text-zinc-800 dark:text-zinc-100 outline-none w-full placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
-            />
-          </Field>
-          <Field label="Valor Mensal" icon={DollarSign}>
-            <span className="text-sm text-zinc-400 shrink-0">R$</span>
-            <input
-              type="number" name="valueMonthly" min="0" step="0.01"
-              value={form.valueMonthly} onChange={handle} placeholder="0,00"
-              className="bg-transparent text-sm text-zinc-800 dark:text-zinc-100 outline-none w-full placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
-            />
-          </Field>
+        <div className="flex flex-col gap-4">
+          <ModalField label="Nome *" icon={Users}>
+            <input type="text" name="name" value={form.name} onChange={handle}
+              placeholder="Nome completo ou empresa…" autoComplete="off"
+              className="bg-transparent text-sm outline-none w-full"
+              style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
+          </ModalField>
+          <ModalField label="E-mail *" icon={Mail}>
+            <input type="email" name="email" value={form.email} onChange={handle}
+              placeholder="email@exemplo.com"
+              className="bg-transparent text-sm outline-none w-full"
+              style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
+          </ModalField>
+          <div className="grid grid-cols-2 gap-3">
+            <ModalField label="Telefone" icon={Phone}>
+              <input type="text" name="phone" value={form.phone} onChange={handlePhone}
+                placeholder="(00) 00000-0000" maxLength={15}
+                className="bg-transparent text-sm outline-none w-full"
+                style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
+            </ModalField>
+            <ModalField label="Valor / mês *">
+              <span className="text-xs shrink-0" style={{ color: "var(--tx-muted)" }}>R$</span>
+              <input type="number" name="valueMonthly" min="0" step="0.01"
+                value={form.valueMonthly} onChange={handle} placeholder="0,00"
+                className="bg-transparent text-sm outline-none w-full"
+                style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
+            </ModalField>
+          </div>
         </div>
 
-        <div className="flex gap-2 px-6 pb-6">
-          <button
-            type="button" onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors font-medium"
-          >
+        <div className="mt-4 px-3.5 py-2.5 rounded-xl flex items-center gap-2"
+          style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-ring)" }}>
+          <DollarSign size={12} style={{ color: "var(--accent)", flexShrink: 0 }} />
+          <p className="text-[11px]" style={{ color: "var(--accent)" }}>
+            {valorNum > 0
+              ? `+${fmt(valorNum)}/mês será adicionado ao lucro do dashboard`
+              : "Defina o valor mensal para impactar o dashboard financeiro"}
+          </p>
+        </div>
+
+        <div className="flex gap-3 mt-4">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm"
+            style={{ color: "var(--tx-muted)", border: "1px solid var(--bd-card)" }}>
             Cancelar
           </button>
-          <button
-            type="button" onClick={submit}
-            disabled={saving || !form.name.trim()}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed text-white dark:text-zinc-900 text-sm font-semibold transition-colors"
-          >
-            {saving ? "Salvando…" : inicial?.id ? "Salvar" : "Cadastrar"}
+          <button onClick={submit}
+            disabled={saving || !form.name.trim() || !form.email.trim()}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+            style={{ background: "var(--accent)", boxShadow: "var(--accent-shadow-css)" }}
+            onMouseEnter={e => { if (!e.currentTarget.disabled) e.currentTarget.style.filter = "brightness(1.12)"; }}
+            onMouseLeave={e => e.currentTarget.style.filter = "none"}>
+            {saving
+              ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Salvando…</>
+              : <>{inicial?.id ? "Salvar" : "Cadastrar"} <ArrowRight size={13} /></>}
           </button>
         </div>
       </div>
@@ -144,31 +166,37 @@ function ClienteModal({ open, onClose, onSave, inicial }) {
   );
 }
 
-// ── Modal Delete ──────────────────────────────────────────────────────────────
-function DeleteModal({ open, cliente, onConfirm, onClose }) {
-  if (!open || !cliente) return null;
+// ─── DeleteModal ──────────────────────────────────────────────────────────────
+function DeleteModal({ open, item, onConfirm, onClose }) {
+  if (!open || !item) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="w-11 h-11 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900/40 flex items-center justify-center">
-            <Trash2 size={18} className="text-rose-500" />
+      <div className="absolute inset-0 backdrop-blur-md"
+        style={{ background: "rgba(0,0,0,0.50)" }} onClick={onClose} />
+      <div className="relative w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+        style={{ background: "var(--bg-card)", border: "1px solid var(--color-danger-ring)" }}>
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center"
+            style={{ background: "var(--color-danger-muted)", border: "1px solid var(--color-danger-ring)" }}>
+            <Trash2 size={18} style={{ color: "var(--color-danger)" }} />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Remover cliente?</h3>
-            <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-              <strong className="text-zinc-600 dark:text-zinc-300 font-medium">{cliente.name}</strong> será removido permanentemente.
+            <p className="text-sm font-semibold" style={{ color: "var(--tx-primary)" }}>Remover cliente?</p>
+            <p className="text-xs mt-1.5 leading-relaxed" style={{ color: "var(--tx-muted)" }}>
+              Remover <span style={{ color: "var(--tx-sub)", fontWeight: 500 }}>{item.name}</span> irá
+              retirar <span style={{ color: "var(--accent)", fontWeight: 600 }}>{fmt(item.valueMonthly || 0)}/mês</span> do
+              lucro do dashboard.
             </p>
           </div>
         </div>
-        <div className="flex gap-2 mt-5">
-          <button type="button" onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors font-medium">
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm"
+            style={{ color: "var(--tx-muted)", border: "1px solid var(--bd-card)" }}>
             Cancelar
           </button>
-          <button type="button" onClick={onConfirm}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold transition-colors">
+          <button onClick={onConfirm}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white hover:brightness-110 transition-all"
+            style={{ background: "var(--color-danger)" }}>
             Remover
           </button>
         </div>
@@ -178,260 +206,366 @@ function DeleteModal({ open, cliente, onConfirm, onClose }) {
   );
 }
 
-// ── Card ──────────────────────────────────────────────────────────────────────
-function ClienteCard({ cliente, onEdit, onDelete }) {
-  const { bg, text } = avatarBg(cliente.name);
-  return (
-    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 flex flex-col gap-3 hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-sm transition-all group">
-      {/* Top row */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className={`w-9 h-9 rounded-xl ${bg} border border-zinc-200 dark:border-transparent flex items-center justify-center text-xs font-bold ${text} shrink-0`}>
-            {cliente.name.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 truncate leading-tight">{cliente.name}</p>
-            <p className="text-[11px] text-zinc-400 mt-0.5">#{cliente.id}</p>
-          </div>
-        </div>
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <button type="button" onClick={() => onEdit(cliente)}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-            <Pencil size={13} />
-          </button>
-          <button type="button" onClick={() => onDelete(cliente)}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
-            <Trash2 size={13} />
-          </button>
-        </div>
-      </div>
-
-      {/* Value */}
-      <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-700/50 rounded-lg px-3 py-2">
-        <span className="text-[11px] text-zinc-400 font-medium">Mensal</span>
-        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-100">{fmt(cliente.valueMonthly)}</span>
-      </div>
-
-      {/* Contact */}
-      <div className="flex flex-col gap-1.5 pt-1 border-t border-zinc-50 dark:border-zinc-800">
-        {cliente.email && (
-          <div className="flex items-center gap-2">
-            <Mail size={11} className="text-zinc-300 dark:text-zinc-600 shrink-0" />
-            <span className="text-[11px] text-zinc-400 truncate">{cliente.email}</span>
-          </div>
-        )}
-        {cliente.phone && (
-          <div className="flex items-center gap-2">
-            <Phone size={11} className="text-zinc-300 dark:text-zinc-600 shrink-0" />
-            <span className="text-[11px] text-zinc-400">{cliente.phone}</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Página ────────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function Clientes() {
   const navigate = useNavigate();
-  const [darkMode, setDarkMode] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [clientes, setClientes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+
+  const [clients,    setClients]    = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [liveStatus, setLiveStatus] = useState("ok");
+
+  const [search,   setSearch]   = useState("");
+  const [viewMode, setViewMode] = useState("list");
+
   const [modalOpen, setModalOpen] = useState(false);
-  const [editando, setEditando] = useState(null);
+  const [editando,  setEditando]  = useState(null);
   const [deletando, setDeletando] = useState(null);
 
-  const toggleTheme = () => {
-    setDarkMode(!darkMode);
-    document.documentElement.classList.toggle("dark");
-  };
+  const pollingRef = useRef(null);
+  function handleLogout() { localStorage.removeItem("token"); navigate("/login"); }
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
-
-  const fetchClientes = async () => {
-    setLoading(true);
+  const fetchClients = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true); else setLiveStatus("syncing");
     try {
       const res = await fetch(`${API_URL}/clients`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.status === 401) { handleLogout(); return; }
-      const data = await res.json();
-      setClientes(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+      setClients(await res.json());
+      setLastUpdate(new Date());
+      setLiveStatus("ok");
+    } catch { setLiveStatus("error"); }
+    finally { if (!silent) setLoading(false); }
+  }, []);
 
-  useEffect(() => { fetchClientes(); }, []);
+  useEffect(() => {
+    fetchClients();
+    pollingRef.current = setInterval(() => fetchClients(true), 15000);
+    return () => clearInterval(pollingRef.current);
+  }, [fetchClients]);
 
-  const handleCriar = async (form) => {
-    try {
-      const res = await fetch(`${API_URL}/clients`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify(form),
-      });
-      if (res.ok) { await fetchClientes(); setModalOpen(false); }
-    } catch (e) { console.error(e); }
-  };
+  async function handleCriar(form) {
+    const res = await fetch(`${API_URL}/clients`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify(form),
+    });
+    if (res.ok) { await fetchClients(); setModalOpen(false); }
+  }
 
-  const handleEditar = async (form) => {
-    try {
-      const res = await fetch(`${API_URL}/clients/${editando.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify(form),
-      });
-      if (res.ok) { await fetchClientes(); setModalOpen(false); setEditando(null); }
-    } catch (e) { console.error(e); }
-  };
+  async function handleEditar(form) {
+    const res = await fetch(`${API_URL}/clients/${editando.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify(form),
+    });
+    if (res.ok) { await fetchClients(); setModalOpen(false); setEditando(null); }
+  }
 
-  const handleDeletar = async () => {
-    try {
-      const res = await fetch(`${API_URL}/clients/${deletando.id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-      if (res.ok) { await fetchClientes(); setDeletando(null); }
-    } catch (e) { console.error(e); }
-  };
+  async function handleDeletar() {
+    const res = await fetch(`${API_URL}/clients/${deletando.id}`, {
+      method: "DELETE", headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    if (res.ok) { await fetchClients(); setDeletando(null); }
+  }
 
-  const filtrados = clientes.filter((c) =>
-    c.name?.toLowerCase().includes(search.toLowerCase()) ||
-    c.email?.toLowerCase().includes(search.toLowerCase())
-  );
+  const receitaMensal = clients.reduce((a, c) => a + (c.valueMonthly || 0), 0);
+  const ticketMedio   = clients.length > 0 ? receitaMensal / clients.length : 0;
+  const maiorCliente  = [...clients].sort((a, b) => (b.valueMonthly || 0) - (a.valueMonthly || 0))[0];
+
+  const filtrados = clients
+    .filter(c =>
+      c.name?.toLowerCase().includes(search.toLowerCase()) ||
+      c.email?.toLowerCase().includes(search.toLowerCase()) ||
+      c.phone?.includes(search)
+    )
+    .sort((a, b) => (b.valueMonthly || 0) - (a.valueMonthly || 0));
 
   return (
-    <div className={darkMode ? "dark" : ""}>
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans flex transition-colors duration-300">
+    <div style={{ minHeight: "100vh", display: "flex", background: "var(--bg-page)",
+      color: "var(--tx-primary)", fontFamily: "inherit" }}>
+      <Sidebar onLogout={handleLogout} />
+      <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
 
-        <Sidebar onLogout={handleLogout} />
-        <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
+      <main className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-0">
 
-        <main className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-0">
+        <PageHeader
+          title="Clientes"
+          subtitle={`${clients.length} cadastrado${clients.length !== 1 ? "s" : ""} · ${fmt(receitaMensal)}/mês`}
+          initials="JS"
+          onMenuClick={() => setMobileOpen(true)}
+          live={{ status: liveStatus, lastUpdate }}
+        />
 
-          <header className="sticky top-0 z-10 bg-zinc-50/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-4 md:px-8 h-14 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <MenuButton onClick={() => setMobileOpen(true)} />
-              <span className="text-sm font-semibold tracking-tight">Clientes</span>
+        <div className="p-4 md:p-8 flex flex-col gap-5">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-widest mb-0.5"
+                style={{ color: "var(--tx-muted)" }}>Receita</p>
+              <h1 className="text-xl font-bold tracking-tight" style={{ color: "var(--tx-primary)" }}>
+                Base de Clientes
+              </h1>
             </div>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={toggleTheme}
-                className="p-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
-                {darkMode ? <Sun size={14} /> : <Moon size={14} />}
-              </button>
-              <button type="button"
-                className="relative p-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-500 transition-colors">
-                <Bell size={14} />
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-              </button>
-              <div className="w-7 h-7 rounded-lg bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-[11px] font-bold text-white dark:text-zinc-900">
-                JS
-              </div>
-            </div>
-          </header>
-
-          <div className="p-5 md:p-8 flex flex-col gap-5">
-
-            {/* Page header */}
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-[11px] font-medium text-zinc-400 uppercase tracking-widest mb-0.5">Base de clientes</p>
-                <h1 className="text-xl font-bold tracking-tight">
-                  Clientes
-                  <span className="ml-2 text-base font-normal text-zinc-400">({clientes.length})</span>
-                </h1>
-              </div>
-            </div>
-
-            {/* Toolbar */}
-            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
-              <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 w-full sm:w-72 focus-within:border-zinc-300 dark:focus-within:border-zinc-600 transition-colors">
-                <Search size={13} className="text-zinc-400 shrink-0" />
-                <input
-                  type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar por nome ou email…"
-                  className="bg-transparent text-sm text-zinc-700 dark:text-zinc-300 outline-none w-full placeholder:text-zinc-400"
-                />
-                {search && (
-                  <button onClick={() => setSearch("")} className="text-zinc-300 hover:text-zinc-500 transition-colors shrink-0">
-                    <X size={12} />
-                  </button>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => { setEditando(null); setModalOpen(true); }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-white text-white dark:text-zinc-900 text-sm font-semibold transition-colors shrink-0"
-              >
-                <Plus size={14} /> Novo cliente
-              </button>
-            </div>
-
-            {loading ? (
-              <div className="flex items-center justify-center py-24">
-                <div className="w-5 h-5 border-2 border-zinc-200 dark:border-zinc-700 border-t-zinc-900 dark:border-t-zinc-100 rounded-full animate-spin" />
-              </div>
-            ) : filtrados.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-                <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
-                  <Users size={22} className="text-zinc-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-zinc-600 dark:text-zinc-300">
-                    {search ? "Nenhum resultado" : "Nenhum cliente ainda"}
-                  </p>
-                  <p className="text-xs text-zinc-400 mt-1">
-                    {search ? `Sem resultados para "${search}"` : "Comece cadastrando seu primeiro cliente"}
-                  </p>
-                </div>
-                {!search && (
-                  <button
-                    type="button"
-                    onClick={() => { setEditando(null); setModalOpen(true); }}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-semibold transition-colors"
-                  >
-                    <Plus size={13} /> Cadastrar cliente
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {filtrados.map((c) => (
-                  <ClienteCard
-                    key={c.id}
-                    cliente={c}
-                    onEdit={(c) => { setEditando(c); setModalOpen(true); }}
-                    onDelete={(c) => setDeletando(c)}
-                  />
-                ))}
-              </div>
-            )}
+            <button onClick={() => fetchClients(true)}
+              className="hidden md:flex items-center gap-1.5 text-xs"
+              style={{ color: "var(--tx-muted)" }}
+              onMouseEnter={e => e.currentTarget.style.color = "var(--tx-primary)"}
+              onMouseLeave={e => e.currentTarget.style.color = "var(--tx-muted)"}>
+              <RefreshCw size={11} className={liveStatus === "syncing" ? "animate-spin" : ""} />
+              Atualizar
+            </button>
           </div>
-        </main>
 
-        <BottomNav />
+          {loading ? (
+            <div className="flex items-center justify-center py-24">
+              <div className="w-5 h-5 border-2 rounded-full animate-spin"
+                style={{ borderColor: "var(--bd-div)", borderTopColor: "var(--accent)" }} />
+            </div>
+          ) : (
+            <>
+              {/* KPI Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden col-span-2 transition-transform hover:-translate-y-0.5"
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
+                  <div className="absolute top-0 right-0 w-36 h-36 rounded-full pointer-events-none"
+                    style={{ background: "var(--accent)", opacity: 0.06, filter: "blur(32px)", transform: "translate(30%,-30%)" }} />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold tracking-[0.12em] uppercase"
+                      style={{ color: "var(--tx-muted)" }}>Receita Mensal (MRR)</span>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                      style={{ background: "var(--accent-muted)" }}>
+                      <TrendingUp size={13} style={{ color: "var(--accent)" }} />
+                    </div>
+                  </div>
+                  <p className="text-[28px] font-bold tracking-tight leading-none"
+                    style={{ color: "var(--accent)" }}>{fmt(receitaMensal)}</p>
+                  <p className="text-[11px]" style={{ color: "var(--tx-muted)" }}>
+                    {clients.length} cliente{clients.length !== 1 ? "s" : ""} · ARR {fmt(receitaMensal * 12)}
+                  </p>
+                </div>
 
-        <ClienteModal
-          open={modalOpen}
-          onClose={() => { setModalOpen(false); setEditando(null); }}
-          onSave={editando ? handleEditar : handleCriar}
-          inicial={editando}
-        />
-        <DeleteModal
-          open={!!deletando}
-          cliente={deletando}
-          onConfirm={handleDeletar}
-          onClose={() => setDeletando(null)}
-        />
+                <KpiCard label="Ticket médio" value={clients.length > 0 ? fmt(ticketMedio) : "—"}
+                  sub="por cliente" icon={<Wallet size={13} style={{ color: "#a78bfa" }} />}
+                  iconBg="rgba(167,139,250,0.12)" />
+                <KpiCard label="Maior cliente"
+                  value={maiorCliente ? fmt(maiorCliente.valueMonthly || 0) : "—"}
+                  sub={maiorCliente?.name || "Sem dados"}
+                  icon={<Users size={13} style={{ color: "var(--color-blue)" }} />}
+                  iconBg="rgba(96,165,250,0.12)" />
+              </div>
+
+              {/* Toolbar */}
+              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
+                  style={{ background: "var(--bg-input)", border: "1px solid var(--bd-input)", minWidth: 240 }}>
+                  <Search size={13} style={{ color: "var(--tx-muted)", flexShrink: 0 }} />
+                  <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                    placeholder="Buscar por nome, e-mail ou telefone…"
+                    className="bg-transparent outline-none w-full text-sm"
+                    style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
+                  {search && (
+                    <button onClick={() => setSearch("")} style={{ color: "var(--tx-muted)", cursor: "pointer" }}>
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center p-1 rounded-xl gap-1"
+                    style={{ background: "var(--bg-subtle)", border: "1px solid var(--bd-div)" }}>
+                    {[{ key: "list", Icon: List }, { key: "grid", Icon: LayoutGrid }].map(({ key, Icon }) => (
+                      <button key={key} onClick={() => setViewMode(key)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                        style={viewMode === key
+                          ? { background: "var(--accent-muted)", color: "var(--accent)" }
+                          : { color: "var(--tx-muted)" }}>
+                        <Icon size={13} />
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={() => { setEditando(null); setModalOpen(true); }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all"
+                    style={{ background: "var(--accent)", boxShadow: "var(--accent-shadow-css)" }}
+                    onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.12)"}
+                    onMouseLeave={e => e.currentTarget.style.filter = "none"}>
+                    <Plus size={15} /> Novo Cliente
+                  </button>
+                </div>
+              </div>
+
+              {/* Lista vazia */}
+              {filtrados.length === 0 ? (
+                <EmptyState
+                  icon={<Users size={24} style={{ color: "var(--accent)" }} />}
+                  title={search ? "Nenhum cliente encontrado" : "Sem clientes cadastrados"}
+                  desc={search ? `Nenhum resultado para "${search}"` : "Cadastre um cliente para gerar receita no dashboard"}
+                  action={!search && (
+                    <button onClick={() => { setEditando(null); setModalOpen(true); }}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all"
+                      style={{ background: "var(--accent)", boxShadow: "var(--accent-shadow-css)" }}
+                      onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.12)"}
+                      onMouseLeave={e => e.currentTarget.style.filter = "none"}>
+                      <Plus size={14} /> Cadastrar cliente
+                    </button>
+                  )}
+                />
+
+              ) : viewMode === "list" ? (
+                <div className="rounded-2xl overflow-hidden"
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
+                  <div className="grid px-5 py-3 items-center"
+                    style={{ gridTemplateColumns: "1fr 160px 130px 64px", borderBottom: "1px solid var(--bd-div)" }}>
+                    {["Cliente", "Telefone", "Receita/mês", ""].map(h => (
+                      <span key={h} style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+                        textTransform: "uppercase", color: "var(--tx-muted)" }}>{h}</span>
+                    ))}
+                  </div>
+                  {filtrados.map((c, i) => {
+                    const hasValue = (c.valueMonthly || 0) > 0;
+                    return (
+                      <div key={c.id} className="grid px-5 py-3.5 items-center group cursor-default transition-colors"
+                        style={{ gridTemplateColumns: "1fr 160px 130px 64px",
+                          borderBottom: i < filtrados.length - 1 ? "1px solid var(--bd-div)" : "none" }}
+                        onMouseEnter={e => e.currentTarget.style.background = "var(--bg-hover)"}
+                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar name={c.name} />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate" style={{ color: "var(--tx-primary)" }}>{c.name}</p>
+                            <p className="text-[11px] truncate" style={{ color: "var(--tx-muted)" }}>{c.email}</p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-mono" style={{ color: "var(--tx-sub)" }}>
+                          {c.phone || <span style={{ color: "var(--tx-muted)" }}>—</span>}
+                        </span>
+                        <span className="text-sm font-bold tabular-nums"
+                          style={{ color: hasValue ? "var(--accent)" : "var(--tx-muted)" }}>
+                          {hasValue ? `+${fmt(c.valueMonthly)}` : fmt(0)}
+                        </span>
+                        <ActionButtons
+                          onEdit={() => { setEditando(c); setModalOpen(true); }}
+                          onDelete={() => setDeletando(c)} />
+                      </div>
+                    );
+                  })}
+                </div>
+
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {filtrados.map(c => {
+                    const hasValue = (c.valueMonthly || 0) > 0;
+                    return (
+                      <div key={c.id} className="relative rounded-2xl p-4 flex flex-col gap-3 overflow-hidden group transition-transform hover:-translate-y-0.5"
+                        style={{ background: "var(--bg-card)",
+                          border: hasValue ? "1px solid var(--accent-ring)" : "1px solid var(--bd-card)" }}>
+                        <div className="absolute top-0 right-0 w-24 h-24 rounded-full pointer-events-none"
+                          style={{ background: "var(--accent)", opacity: 0.05, filter: "blur(24px)", transform: "translate(30%,-30%)" }} />
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <Avatar name={c.name} size={36} />
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold truncate" style={{ color: "var(--tx-primary)" }}>{c.name}</p>
+                              <p className="text-[11px] truncate" style={{ color: "var(--tx-muted)" }}>{c.email}</p>
+                            </div>
+                          </div>
+                          <ActionButtons
+                            onEdit={() => { setEditando(c); setModalOpen(true); }}
+                            onDelete={() => setDeletando(c)} />
+                        </div>
+                        {c.phone && (
+                          <p className="text-[11px] flex items-center gap-1.5" style={{ color: "var(--tx-muted)" }}>
+                            <Phone size={10} /> {c.phone}
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between mt-auto pt-2"
+                          style={{ borderTop: "1px solid var(--bd-div)" }}>
+                          <span className="text-[11px]" style={{ color: "var(--tx-muted)" }}>receita mensal</span>
+                          <p className="text-sm font-bold tabular-nums"
+                            style={{ color: hasValue ? "var(--accent)" : "var(--tx-muted)" }}>
+                            {hasValue ? `+${fmt(c.valueMonthly)}` : fmt(0)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </main>
+
+      <BottomNav />
+      <ClienteModal open={modalOpen} onClose={() => { setModalOpen(false); setEditando(null); }}
+        onSave={editando ? handleEditar : handleCriar} inicial={editando} />
+      <DeleteModal open={!!deletando} item={deletando}
+        onConfirm={handleDeletar} onClose={() => setDeletando(null)} />
+    </div>
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function Avatar({ name = "", size = 32 }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: size * 0.375,
+      background: "var(--accent-muted)", color: "var(--accent)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: size * 0.375, fontWeight: 700, flexShrink: 0 }}>
+      {name.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+function KpiCard({ label, value, sub, icon, iconBg }) {
+  return (
+    <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden transition-transform hover:-translate-y-0.5"
+      style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
+      <div className="flex items-center justify-between">
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+          textTransform: "uppercase", color: "var(--tx-muted)" }}>{label}</span>
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: iconBg }}>
+          {icon}
+        </div>
       </div>
+      <p className="text-xl font-bold tracking-tight leading-none" style={{ color: "var(--tx-primary)" }}>{value}</p>
+      <p className="text-[11px]" style={{ color: "var(--tx-muted)" }}>{sub}</p>
+    </div>
+  );
+}
+
+function ActionButtons({ onEdit, onDelete }) {
+  return (
+    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+      {[
+        { action: onEdit,   Icon: Pencil, hoverBd: "var(--accent-ring)" },
+        { action: onDelete, Icon: Trash2, hoverBd: "var(--color-danger-ring)" },
+      ].map(({ action, Icon, hoverBd }, i) => (
+        <button key={i} onClick={action}
+          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+          style={{ border: "1px solid var(--bd-div)", background: "transparent" }}
+          onMouseEnter={e => e.currentTarget.style.borderColor = hoverBd}
+          onMouseLeave={e => e.currentTarget.style.borderColor = "var(--bd-div)"}>
+          <Icon size={11} style={{ color: "var(--tx-sub)" }} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ icon, title, desc, action }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
+      <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+        style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-ring)" }}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-sm font-semibold" style={{ color: "var(--tx-primary)" }}>{title}</p>
+        <p className="text-xs mt-1" style={{ color: "var(--tx-sub)" }}>{desc}</p>
+      </div>
+      {action}
     </div>
   );
 }

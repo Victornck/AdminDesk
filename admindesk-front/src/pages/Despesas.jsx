@@ -1,151 +1,187 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { Sidebar, BottomNav, MobileDrawer, MenuButton } from "../components/Sidebar";
+import { Sidebar, BottomNav, MobileDrawer } from "../components/Sidebar";
+import { PageHeader } from "../components/PageHeader";
+import { useTheme } from "../hooks/useTheme";
 import {
-  Bell, Sun, Moon, Plus, X, Trash2, Pencil,
-  TrendingUp, TrendingDown, Wallet, Search, Calendar, FileText, ArrowRight
+  Plus, X, Trash2, Pencil, Search,
+  TrendingDown, Wallet, ArrowRight, Calendar, FileText,
+  Tag, RefreshCw, ChevronDown, LayoutGrid, List,
 } from "lucide-react";
 
-const API_URL = "http://localhost:8080";
-function getToken() { return localStorage.getItem("token"); }
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+function getToken() { return localStorage.getItem("token") ?? ""; }
 
-const fmt = (v) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
-const fmtDate = (s) => {
-  if (!s) return "";
-  const [y, m, d] = s.split("-");
-  return `${d}/${m}/${y}`;
-};
-
-const EMPTY_FORM = { descriptor: "", price: "", data: "", type: "expense" };
+const fmt      = (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
+const fmtDate  = (s) => { if (!s) return ""; const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
+const today    = () => new Date().toISOString().split("T")[0];
 const blockEnter = (e) => { if (e.key === "Enter") e.preventDefault(); };
 
-// ── Modal Field ───────────────────────────────────────────────────────────────
+const CATEGORIAS = [
+  { key: "alimentacao", label: "Alimentação", color: "#fb923c" },
+  { key: "transporte",  label: "Transporte",  color: "#60a5fa" },
+  { key: "moradia",     label: "Moradia",     color: "#a78bfa" },
+  { key: "saude",       label: "Saúde",       color: "#34d399" },
+  { key: "educacao",    label: "Educação",    color: "#f472b6" },
+  { key: "lazer",       label: "Lazer",       color: "#fbbf24" },
+  { key: "servicos",    label: "Serviços",    color: "#2dd4bf" },
+  { key: "outros",      label: "Outros",      color: "#94a3b8" },
+];
+const catInfo = (key) => CATEGORIAS.find(c => c.key === key) || CATEGORIAS[7];
+
+const EMPTY_FORM = { descriptor: "", price: "", data: today(), categoria: "outros", type: "expense" };
+
+// ─── ModalField ───────────────────────────────────────────────────────────────
 function ModalField({ label, icon: Icon, children }) {
   const [focused, setFocused] = useState(false);
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[10px] font-bold tracking-[0.12em] uppercase text-white/30">{label}</label>
-      <div
-        className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl transition-all duration-150"
-        style={{
-          background: "rgba(255,255,255,0.05)",
-          border: `1px solid ${focused ? "rgba(163,230,53,0.4)" : "rgba(255,255,255,0.08)"}`,
-        }}
+      <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+        textTransform: "uppercase", color: "var(--tx-muted)" }}>
+        {label}
+      </label>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12,
+        transition: "all 0.15s", background: "var(--bg-input)",
+        border: focused ? "1px solid var(--accent)" : "1px solid var(--bd-input)",
+        boxShadow: focused ? "0 0 0 3px var(--accent-ring)" : "none",
+      }}
         onFocusCapture={() => setFocused(true)}
-        onBlurCapture={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setFocused(false); }}
-      >
-        {Icon && <Icon size={14} className="text-white/25 shrink-0" />}
+        onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget)) setFocused(false); }}>
+        {Icon && <Icon size={14} style={{ color: "var(--tx-muted)", flexShrink: 0 }} />}
         {children}
       </div>
     </div>
   );
 }
 
-// ── Modal Lançamento ──────────────────────────────────────────────────────────
-function SpentModal({ open, onClose, onSave, inicial }) {
-  const [form, setForm] = useState(inicial || EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
+// ─── DespesaModal ─────────────────────────────────────────────────────────────
+function DespesaModal({ open, onClose, onSave, inicial }) {
+  const [form,    setForm]    = useState(inicial || EMPTY_FORM);
+  const [saving,  setSaving]  = useState(false);
+  const [catOpen, setCatOpen] = useState(false);
 
-  useEffect(() => { setForm(inicial || EMPTY_FORM); setSaving(false); }, [inicial, open]);
+  useEffect(() => {
+    setForm(inicial ? { ...inicial } : EMPTY_FORM);
+    setSaving(false);
+    setCatOpen(false);
+  }, [inicial, open]);
+
   if (!open) return null;
 
-  const handle = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-  const submit = async () => {
+  const handle = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  const cat    = catInfo(form.categoria);
+
+  async function submit() {
     if (!form.descriptor.trim() || !form.price || !form.data || saving) return;
     setSaving(true);
-    await onSave({ ...form, price: parseFloat(form.price) });
+    await onSave({ ...form, price: parseFloat(form.price), type: "expense" });
     setSaving(false);
-  };
-
-  const isExpense = form.type === "expense";
+  }
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
-      <div
-        className="relative w-full max-w-md rounded-2xl p-6 shadow-2xl"
-        style={{ background: "#0b1320", border: "1px solid rgba(255,255,255,0.08)" }}
-        onKeyDown={blockEnter}
-      >
-        {/* brilho topo dinâmico */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-px transition-all duration-300"
-          style={{ background: isExpense
-            ? "linear-gradient(90deg,transparent,rgba(239,68,68,0.6),transparent)"
-            : "linear-gradient(90deg,transparent,rgba(163,230,53,0.6),transparent)" }} />
+      <div className="absolute inset-0 backdrop-blur-md"
+        style={{ background: "rgba(0,0,0,0.50)" }} onClick={onClose} />
+
+      <div className="relative w-full max-w-md rounded-2xl p-6 shadow-2xl"
+        style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}
+        onKeyDown={blockEnter}>
+
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-px"
+          style={{ background: "linear-gradient(90deg,transparent,rgba(239,68,68,0.65),transparent)" }} />
 
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-sm font-semibold text-white" style={{ letterSpacing: "-0.01em" }}>
-              {inicial?.id ? "Editar Lançamento" : "Novo Lançamento"}
-            </h2>
-            <p className="text-[11px] text-white/30 mt-0.5">Preencha os dados abaixo</p>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center"
+              style={{ background: "var(--color-danger-muted)" }}>
+              <TrendingDown size={12} style={{ color: "var(--color-danger)" }} />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold" style={{ color: "var(--tx-primary)" }}>
+                {inicial?.id ? "Editar Despesa" : "Nova Despesa"}
+              </h2>
+              <p className="text-[11px]" style={{ color: "var(--tx-muted)" }}>Preencha os dados abaixo</p>
+            </div>
           </div>
-          <button type="button" onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-white/5"
-            style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-            <X size={14} className="text-white/35" />
+          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ border: "1px solid var(--bd-card)" }}
+            onMouseEnter={e => e.currentTarget.style.background = "var(--bg-subtle)"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+            <X size={14} style={{ color: "var(--tx-muted)" }} />
           </button>
         </div>
 
         <div className="flex flex-col gap-4">
-          {/* Toggle tipo */}
-          <div className="flex p-1 rounded-xl gap-1"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            {[
-              { key: "expense", label: "Despesa", Icon: TrendingDown, color: "#ef4444", bg: "rgba(239,68,68,0.12)", br: "rgba(239,68,68,0.25)" },
-              { key: "income",  label: "Receita",  Icon: TrendingUp,  color: "#a3e635", bg: "rgba(163,230,53,0.10)", br: "rgba(163,230,53,0.25)" },
-            ].map(({ key, label, Icon, color, bg, br }) => {
-              const active = form.type === key;
-              return (
-                <button key={key} type="button" onClick={() => setForm({ ...form, type: key })}
-                  className="flex-1 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
-                  style={active
-                    ? { background: bg, color, border: `1px solid ${br}` }
-                    : { color: "rgba(255,255,255,0.3)", border: "1px solid transparent" }
-                  }>
-                  <Icon size={13} /> {label}
-                </button>
-              );
-            })}
-          </div>
-
           <ModalField label="Descrição *" icon={FileText}>
             <input type="text" name="descriptor" value={form.descriptor} onChange={handle}
-              placeholder="Ex: Salário, Aluguel, Freelance…" autoComplete="off"
-              className="bg-transparent text-sm text-white outline-none w-full placeholder:text-white/20"
-              style={{ caretColor: "#a3e635" }} />
+              placeholder="Ex: Aluguel, Mercado, Gasolina…" autoComplete="off"
+              className="bg-transparent text-sm outline-none w-full"
+              style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
           </ModalField>
 
           <ModalField label="Valor *">
-            <span className="text-xs text-white/25 shrink-0">R$</span>
+            <span className="text-xs shrink-0" style={{ color: "var(--tx-muted)" }}>R$</span>
             <input type="number" name="price" min="0" step="0.01"
               value={form.price} onChange={handle} placeholder="0,00"
-              className="bg-transparent text-sm text-white outline-none w-full placeholder:text-white/20"
-              style={{ caretColor: "#a3e635" }} />
+              className="bg-transparent text-sm outline-none w-full"
+              style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
           </ModalField>
 
           <ModalField label="Data *" icon={Calendar}>
             <input type="date" name="data" value={form.data} onChange={handle}
-              className="bg-transparent text-sm text-white outline-none w-full"
-              style={{ caretColor: "#a3e635", colorScheme: "dark" }} />
+              className="bg-transparent text-sm outline-none w-full"
+              style={{ color: "var(--tx-primary)", caretColor: "var(--accent)",
+                colorScheme: document.documentElement.classList.contains("dark") ? "dark" : "light" }} />
           </ModalField>
+
+          <div className="flex flex-col gap-1.5 relative">
+            <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+              textTransform: "uppercase", color: "var(--tx-muted)" }}>Categoria</label>
+            <button onClick={() => setCatOpen(o => !o)}
+              className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl w-full transition-all"
+              style={{ background: "var(--bg-input)",
+                border: catOpen ? "1px solid var(--accent)" : "1px solid var(--bd-input)" }}>
+              <Tag size={14} style={{ color: cat.color, flexShrink: 0 }} />
+              <span className="flex-1 text-left text-sm" style={{ color: "var(--tx-primary)" }}>{cat.label}</span>
+              <ChevronDown size={13} style={{ color: "var(--tx-muted)",
+                transform: catOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.15s" }} />
+            </button>
+            {catOpen && (
+              <div className="absolute top-full left-0 right-0 mt-1 rounded-xl overflow-hidden z-10 shadow-2xl"
+                style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
+                {CATEGORIAS.map(c => (
+                  <button key={c.key}
+                    onClick={() => { setForm(f => ({ ...f, categoria: c.key })); setCatOpen(false); }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-left transition-colors"
+                    style={{ color: "var(--tx-primary)" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "var(--bg-hover)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c.color }} />
+                    {c.label}
+                    {form.categoria === c.key && (
+                      <span className="ml-auto text-xs" style={{ color: c.color }}>✓</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex gap-3 mt-6">
-          <button type="button" onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl text-sm text-white/35 transition-colors hover:text-white/60"
-            style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm"
+            style={{ color: "var(--tx-muted)", border: "1px solid var(--bd-card)" }}>
             Cancelar
           </button>
-          <button type="button" onClick={submit}
+          <button onClick={submit}
             disabled={saving || !form.descriptor.trim() || !form.price || !form.data}
-            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-black flex items-center justify-center gap-2 transition-all disabled:opacity-40"
-            style={{ background: "linear-gradient(135deg,#a3e635,#65a30d)" }}>
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all disabled:opacity-40 hover:brightness-110"
+            style={{ background: "var(--color-danger)" }}>
             {saving
-              ? <><span className="w-3.5 h-3.5 border-2 border-black/20 border-t-black rounded-full animate-spin" /> Salvando…</>
-              : <>{inicial?.id ? "Salvar" : "Cadastrar"} <ArrowRight size={13} /></>}
+              ? <><span className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Salvando…</>
+              : <>{inicial?.id ? "Salvar" : "Registrar"} <ArrowRight size={13} /></>}
           </button>
         </div>
       </div>
@@ -154,39 +190,37 @@ function SpentModal({ open, onClose, onSave, inicial }) {
   );
 }
 
-// ── Modal Delete ──────────────────────────────────────────────────────────────
+// ─── DeleteModal ──────────────────────────────────────────────────────────────
 function DeleteModal({ open, item, onConfirm, onClose }) {
   if (!open || !item) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
+      <div className="absolute inset-0 backdrop-blur-md"
+        style={{ background: "rgba(0,0,0,0.50)" }} onClick={onClose} />
       <div className="relative w-full max-w-sm rounded-2xl p-6 shadow-2xl"
-        style={{ background: "#0b1320", border: "1px solid rgba(239,68,68,0.18)" }}>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-px"
-          style={{ background: "linear-gradient(90deg,transparent,rgba(239,68,68,0.6),transparent)" }} />
+        style={{ background: "var(--bg-card)", border: "1px solid var(--color-danger-ring)" }}>
         <div className="flex flex-col items-center gap-4 text-center">
           <div className="w-11 h-11 rounded-xl flex items-center justify-center"
-            style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)" }}>
-            <Trash2 size={18} className="text-red-400" />
+            style={{ background: "var(--color-danger-muted)", border: "1px solid var(--color-danger-ring)" }}>
+            <Trash2 size={18} style={{ color: "var(--color-danger)" }} />
           </div>
           <div>
-            <p className="text-sm font-semibold text-white">Remover lançamento?</p>
-            <p className="text-xs text-white/40 mt-1.5 leading-relaxed">
+            <p className="text-sm font-semibold" style={{ color: "var(--tx-primary)" }}>Remover despesa?</p>
+            <p className="text-xs mt-1.5 leading-relaxed" style={{ color: "var(--tx-muted)" }}>
               Você está prestes a remover{" "}
-              <span className="text-white/75 font-medium">{item.descriptor}</span>.<br />
-              Esta ação não pode ser desfeita.
+              <span style={{ color: "var(--tx-sub)", fontWeight: 500 }}>{item.descriptor}</span>.{" "}
+              O dashboard será atualizado automaticamente.
             </p>
           </div>
         </div>
         <div className="flex gap-3 mt-6">
-          <button type="button" onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl text-sm text-white/35 hover:text-white/60 transition-colors"
-            style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm"
+            style={{ color: "var(--tx-muted)", border: "1px solid var(--bd-card)" }}>
             Cancelar
           </button>
-          <button type="button" onClick={onConfirm}
+          <button onClick={onConfirm}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white hover:brightness-110 transition-all"
-            style={{ background: "linear-gradient(135deg,#ef4444,#dc2626)" }}>
+            style={{ background: "var(--color-danger)" }}>
             Remover
           </button>
         </div>
@@ -196,376 +230,428 @@ function DeleteModal({ open, item, onConfirm, onClose }) {
   );
 }
 
-// ── Página ────────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function Despesas() {
   const navigate = useNavigate();
-  const [dm, setDm] = useState(true); // dm = darkMode
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [spents, setSpents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [filtroTipo, setFiltroTipo] = useState("all");
+
+  const [spents,     setSpents]     = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [liveStatus, setLiveStatus] = useState("ok");
+
+  const [search,          setSearch]          = useState("");
+  const [filtroCategoria, setFiltroCategoria] = useState("all");
+  const [viewMode,        setViewMode]        = useState("list");
+
   const [modalOpen, setModalOpen] = useState(false);
-  const [editando, setEditando] = useState(null);
+  const [editando,  setEditando]  = useState(null);
   const [deletando, setDeletando] = useState(null);
 
-  const toggleTheme = () => { setDm(!dm); document.documentElement.classList.toggle("dark"); };
-  const handleLogout = () => { localStorage.removeItem("token"); navigate("/login"); };
+  const pollingRef = useRef(null);
+  function handleLogout() { localStorage.removeItem("token"); navigate("/login"); }
 
-  const fetchSpents = async () => {
-    setLoading(true);
+  const fetchSpents = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true); else setLiveStatus("syncing");
     try {
-      const res = await fetch(`${API_URL}/spents`, { headers: { Authorization: `Bearer ${getToken()}` } });
-      if (res.status === 401) { handleLogout(); return; }
-      setSpents(await res.json());
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
-  };
-
-  useEffect(() => { fetchSpents(); }, []);
-
-  const handleCriar = async (form) => {
-    try {
-      const res = await fetch(`${API_URL}/spents`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify(form),
-      });
-      if (res.ok) { await fetchSpents(); setModalOpen(false); }
-    } catch (e) { console.error(e); }
-  };
-
-  const handleEditar = async (form) => {
-    try {
-      const res = await fetch(`${API_URL}/spents/${editando.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify(form),
-      });
-      if (res.ok) { await fetchSpents(); setModalOpen(false); setEditando(null); }
-    } catch (e) { console.error(e); }
-  };
-
-  const handleDeletar = async () => {
-    try {
-      const res = await fetch(`${API_URL}/spents/${deletando.id}`, {
-        method: "DELETE",
+      const res = await fetch(`${API_URL}/spents?type=expense`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
-      if (res.ok) { await fetchSpents(); setDeletando(null); }
-    } catch (e) { console.error(e); }
-  };
+      if (res.status === 401) { handleLogout(); return; }
+      const data = await res.json();
+      setSpents(data.filter(s => s.type === "expense" || s.type === undefined));
+      setLastUpdate(new Date());
+      setLiveStatus("ok");
+    } catch { setLiveStatus("error"); }
+    finally { if (!silent) setLoading(false); }
+  }, []);
 
-  const totalReceitas = spents.filter(s => s.type === "income").reduce((a, s) => a + s.price, 0);
-  const totalDespesas = spents.filter(s => s.type === "expense").reduce((a, s) => a + s.price, 0);
-  const saldo = totalReceitas - totalDespesas;
+  useEffect(() => {
+    fetchSpents();
+    pollingRef.current = setInterval(() => fetchSpents(true), 15000);
+    return () => clearInterval(pollingRef.current);
+  }, [fetchSpents]);
 
-  const filtrados = spents.filter((s) =>
-    s.descriptor?.toLowerCase().includes(search.toLowerCase()) &&
-    (filtroTipo === "all" || s.type === filtroTipo)
-  );
+  async function handleCriar(form) {
+    const res = await fetch(`${API_URL}/spents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ ...form, type: "expense" }),
+    });
+    if (res.ok) { await fetchSpents(); setModalOpen(false); }
+  }
 
-  // ── tema ──
-  const bgPage   = dm ? "#080d14" : "#f0f2f5";
-  const bgCard   = dm ? "#0d1824" : "#ffffff";
-  const bdCard   = dm ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.09)";
-  const txPrimary= dm ? "#f1f5f9"  : "#0f172a";
-  const txSub    = dm ? "#94a3b8"  : "#475569";
-  const txMuted  = dm ? "rgba(255,255,255,0.28)" : "#94a3b8";
-  const bdDiv    = dm ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.07)";
-  const bgInput  = dm ? "rgba(255,255,255,0.04)" : "#f8fafc";
-  const bdInput  = dm ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.10)";
-  const bgHeader = dm ? "rgba(8,13,20,0.88)" : "rgba(240,242,245,0.92)";
+  async function handleEditar(form) {
+    const res = await fetch(`${API_URL}/spents/${editando.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ ...form, type: "expense" }),
+    });
+    if (res.ok) { await fetchSpents(); setModalOpen(false); setEditando(null); }
+  }
+
+  async function handleDeletar() {
+    const res = await fetch(`${API_URL}/spents/${deletando.id}`, {
+      method: "DELETE", headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    if (res.ok) { await fetchSpents(); setDeletando(null); }
+  }
+
+  const totalGeral = spents.reduce((a, s) => a + (s.price || 0), 0);
+
+  const totalPorCategoria = CATEGORIAS
+    .map(c => ({
+      ...c,
+      total: spents.filter(s => s.categoria === c.key).reduce((a, s) => a + (s.price || 0), 0),
+      count: spents.filter(s => s.categoria === c.key).length,
+    }))
+    .filter(c => c.count > 0)
+    .sort((a, b) => b.total - a.total);
+
+  const maiorCategoria = totalPorCategoria[0];
+
+  const filtrados = spents
+    .filter(s =>
+      s.descriptor?.toLowerCase().includes(search.toLowerCase()) &&
+      (filtroCategoria === "all" || s.categoria === filtroCategoria)
+    )
+    .sort((a, b) => new Date(b.data) - new Date(a.data));
 
   return (
-    <div className={dm ? "dark" : ""}>
-      <div className="min-h-screen flex font-sans" style={{ background: bgPage, color: txPrimary }}>
+    <div style={{ minHeight: "100vh", display: "flex", background: "var(--bg-page)",
+      color: "var(--tx-primary)", fontFamily: "inherit" }}>
+      <Sidebar onLogout={handleLogout} />
+      <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
 
-        <Sidebar onLogout={handleLogout} />
-        <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
+      <main className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-0">
 
-        <main className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-0">
+        <PageHeader
+          title="Despesas"
+          subtitle={`${spents.length} ${spents.length === 1 ? "lançamento" : "lançamentos"}`}
+          initials="JS"
+          onMenuClick={() => setMobileOpen(true)}
+          live={{ status: liveStatus, lastUpdate }}
+        />
 
-          {/* ── Header ── */}
-          <header
-            className="sticky top-0 z-10 backdrop-blur-xl px-4 md:px-8 py-3 flex items-center justify-between"
-            style={{ background: bgHeader, borderBottom: `1px solid ${bdDiv}` }}
-          >
-            <div className="flex items-center gap-4">
-              <MenuButton onClick={() => setMobileOpen(true)} />
-              <div>
-                <p className="text-sm font-semibold" style={{ color: txPrimary, letterSpacing: "-0.01em" }}>
-                  Despesas & Receitas
-                </p>
-                <p className="text-[11px] hidden md:block" style={{ color: txMuted }}>
-                  {spents.length} {spents.length === 1 ? "lançamento" : "lançamentos"}
-                </p>
-              </div>
+        <div className="p-4 md:p-8 flex flex-col gap-5">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-widest mb-0.5"
+                style={{ color: "var(--tx-muted)" }}>Financeiro</p>
+              <h1 className="text-xl font-bold tracking-tight" style={{ color: "var(--tx-primary)" }}>
+                Controle de Despesas
+              </h1>
             </div>
+            <button onClick={() => fetchSpents(true)}
+              className="hidden md:flex items-center gap-1.5 text-xs"
+              style={{ color: "var(--tx-muted)" }}
+              onMouseEnter={e => e.currentTarget.style.color = "var(--tx-primary)"}
+              onMouseLeave={e => e.currentTarget.style.color = "var(--tx-muted)"}>
+              <RefreshCw size={11} className={liveStatus === "syncing" ? "animate-spin" : ""} />
+              Atualizar
+            </button>
+          </div>
 
-            <div className="flex items-center gap-2">
-              <button onClick={toggleTheme}
-                className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-105"
-                style={{ background: dm ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${bdCard === "#ffffff" ? "rgba(0,0,0,0.09)" : "rgba(255,255,255,0.07)"}` }}>
-                {dm
-                  ? <Sun size={15} style={{ color: txMuted }} />
-                  : <Moon size={15} style={{ color: txSub }} />}
-              </button>
-              <button className="relative w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ background: dm ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${bdCard === "#ffffff" ? "rgba(0,0,0,0.09)" : "rgba(255,255,255,0.07)"}` }}>
-                <Bell size={15} style={{ color: txMuted }} />
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-lime-400" />
-              </button>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-black"
-                style={{ background: "linear-gradient(135deg,#a3e635,#65a30d)" }}>
-                JS
-              </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-24">
+              <div className="w-5 h-5 border-2 rounded-full animate-spin"
+                style={{ borderColor: "var(--bd-div)", borderTopColor: "var(--accent)" }} />
             </div>
-          </header>
+          ) : (
+            <>
+              {/* KPI Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden col-span-2 transition-transform hover:-translate-y-0.5"
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
+                  <div className="absolute top-0 right-0 w-36 h-36 rounded-full pointer-events-none"
+                    style={{ background: "var(--color-danger)", opacity: 0.06, filter: "blur(32px)", transform: "translate(30%,-30%)" }} />
+                  <div className="flex items-center justify-between">
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+                      textTransform: "uppercase", color: "var(--tx-muted)" }}>Total do mês</span>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                      style={{ background: "var(--color-danger-muted)" }}>
+                      <TrendingDown size={13} style={{ color: "var(--color-danger)" }} />
+                    </div>
+                  </div>
+                  <p className="text-[28px] font-bold tracking-tight leading-none"
+                    style={{ color: "var(--color-danger)" }}>{fmt(totalGeral)}</p>
+                  <p className="text-[11px]" style={{ color: "var(--tx-muted)" }}>
+                    {spents.length} despesa{spents.length !== 1 ? "s" : ""} registrada{spents.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
 
-          {/* ── Conteúdo ── */}
-          <div className="p-4 md:p-8 flex flex-col gap-5">
+                <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden transition-transform hover:-translate-y-0.5"
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
+                  <div className="flex items-center justify-between">
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+                      textTransform: "uppercase", color: "var(--tx-muted)" }}>Maior gasto</span>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                      style={{ background: `${maiorCategoria?.color ?? "#94a3b8"}20` }}>
+                      <Tag size={13} style={{ color: maiorCategoria?.color ?? "#94a3b8" }} />
+                    </div>
+                  </div>
+                  <p className="text-xl font-bold tracking-tight leading-none"
+                    style={{ color: maiorCategoria?.color ?? "var(--tx-sub)" }}>
+                    {maiorCategoria ? fmt(maiorCategoria.total) : "—"}
+                  </p>
+                  <p className="text-[11px]" style={{ color: "var(--tx-muted)" }}>
+                    {maiorCategoria?.label || "Sem dados"}
+                  </p>
+                </div>
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-3 gap-4">
+                <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden transition-transform hover:-translate-y-0.5"
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
+                  <div className="flex items-center justify-between">
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+                      textTransform: "uppercase", color: "var(--tx-muted)" }}>Ticket médio</span>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                      style={{ background: "rgba(167,139,250,0.12)" }}>
+                      <Wallet size={13} style={{ color: "#a78bfa" }} />
+                    </div>
+                  </div>
+                  <p className="text-xl font-bold tracking-tight leading-none" style={{ color: "#a78bfa" }}>
+                    {spents.length > 0 ? fmt(totalGeral / spents.length) : "—"}
+                  </p>
+                  <p className="text-[11px]" style={{ color: "var(--tx-muted)" }}>por lançamento</p>
+                </div>
+              </div>
 
-              {/* Receitas */}
-              <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden transition-transform hover:-translate-y-0.5"
-                style={{ background: bgCard, border: `1px solid ${bdCard}` }}>
-                <div className="absolute top-0 right-0 w-28 h-28 rounded-full pointer-events-none"
-                  style={{ background: "#a3e635", opacity: 0.07, filter: "blur(28px)", transform: "translate(30%,-30%)" }} />
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold tracking-[0.12em] uppercase" style={{ color: txMuted }}>Receitas</span>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(163,230,53,0.12)" }}>
-                    <TrendingUp size={13} style={{ color: "#a3e635" }} />
+              {/* Distribuição por categoria */}
+              {totalPorCategoria.length > 0 && (
+                <div className="rounded-2xl p-5"
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+                    textTransform: "uppercase", color: "var(--tx-muted)", marginBottom: 16 }}>
+                    Distribuição por categoria
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    {totalPorCategoria.slice(0, 5).map(c => {
+                      const pct = totalGeral > 0 ? (c.total / totalGeral) * 100 : 0;
+                      return (
+                        <div key={c.key} className="flex items-center gap-3">
+                          <span className="text-xs w-24 shrink-0 truncate" style={{ color: "var(--tx-sub)" }}>{c.label}</span>
+                          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 6, background: "var(--bg-subtle)" }}>
+                            <div className="h-full rounded-full transition-all duration-700"
+                              style={{ width: `${pct}%`, background: c.color }} />
+                          </div>
+                          <span className="text-xs w-20 text-right shrink-0 font-mono"
+                            style={{ color: "var(--tx-sub)" }}>{fmt(c.total)}</span>
+                          <span className="text-[11px] w-8 text-right shrink-0"
+                            style={{ color: "var(--tx-muted)" }}>{pct.toFixed(0)}%</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-                <p className="text-xl font-bold" style={{ color: dm ? "#a3e635" : "#166534", letterSpacing: "-0.02em" }}>
-                  {fmt(totalReceitas)}
-                </p>
-              </div>
+              )}
 
-              {/* Despesas */}
-              <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden transition-transform hover:-translate-y-0.5"
-                style={{ background: bgCard, border: `1px solid ${bdCard}` }}>
-                <div className="absolute top-0 right-0 w-28 h-28 rounded-full pointer-events-none"
-                  style={{ background: "#ef4444", opacity: 0.07, filter: "blur(28px)", transform: "translate(30%,-30%)" }} />
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold tracking-[0.12em] uppercase" style={{ color: txMuted }}>Despesas</span>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(239,68,68,0.12)" }}>
-                    <TrendingDown size={13} style={{ color: "#ef4444" }} />
+              {/* Toolbar */}
+              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
+                    style={{ background: "var(--bg-input)", border: "1px solid var(--bd-input)", minWidth: 200 }}>
+                    <Search size={13} style={{ color: "var(--tx-muted)", flexShrink: 0 }} />
+                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                      placeholder="Buscar descrição…"
+                      className="bg-transparent outline-none w-full text-sm"
+                      style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
+                    {search && (
+                      <button onClick={() => setSearch("")} style={{ color: "var(--tx-muted)" }}>
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 p-1 rounded-xl"
+                    style={{ background: "var(--bg-subtle)", border: "1px solid var(--bd-div)" }}>
+                    <FilterBtn active={filtroCategoria === "all"} onClick={() => setFiltroCategoria("all")}>
+                      Todas
+                    </FilterBtn>
+                    {totalPorCategoria.map(c => (
+                      <FilterBtn key={c.key} active={filtroCategoria === c.key}
+                        onClick={() => setFiltroCategoria(c.key)} color={c.color}>
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
+                        {c.label}
+                      </FilterBtn>
+                    ))}
                   </div>
                 </div>
-                <p className="text-xl font-bold" style={{ color: dm ? "#f87171" : "#991b1b", letterSpacing: "-0.02em" }}>
-                  {fmt(totalDespesas)}
-                </p>
-              </div>
 
-              {/* Saldo */}
-              <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden transition-transform hover:-translate-y-0.5"
-                style={{
-                  background: saldo >= 0
-                    ? dm ? "linear-gradient(135deg,#091a0d,#0b1f10)" : "linear-gradient(135deg,#f0fdf4,#dcfce7)"
-                    : dm ? "linear-gradient(135deg,#1a0909,#1f0b0b)" : "linear-gradient(135deg,#fff1f2,#ffe4e6)",
-                  border: `1px solid ${saldo >= 0
-                    ? dm ? "rgba(163,230,53,0.18)" : "rgba(22,163,74,0.2)"
-                    : dm ? "rgba(239,68,68,0.18)" : "rgba(220,38,38,0.2)"}`,
-                }}>
-                <div className="absolute top-0 right-0 w-28 h-28 rounded-full pointer-events-none"
-                  style={{ background: saldo >= 0 ? "#a3e635" : "#ef4444", opacity: 0.1, filter: "blur(28px)", transform: "translate(30%,-30%)" }} />
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold tracking-[0.12em] uppercase"
-                    style={{ color: saldo >= 0 ? (dm ? "rgba(163,230,53,0.65)" : "#15803d") : (dm ? "rgba(239,68,68,0.65)" : "#b91c1c") }}>
-                    Saldo
-                  </span>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    style={{ background: saldo >= 0 ? "rgba(163,230,53,0.12)" : "rgba(239,68,68,0.12)" }}>
-                    <Wallet size={13} style={{ color: saldo >= 0 ? (dm ? "#a3e635" : "#15803d") : (dm ? "#f87171" : "#dc2626") }} />
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center p-1 rounded-xl gap-1"
+                    style={{ background: "var(--bg-subtle)", border: "1px solid var(--bd-div)" }}>
+                    {[{ key: "list", Icon: List }, { key: "grid", Icon: LayoutGrid }].map(({ key, Icon }) => (
+                      <button key={key} onClick={() => setViewMode(key)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                        style={viewMode === key
+                          ? { background: "var(--accent-muted)", color: "var(--accent)" }
+                          : { color: "var(--tx-muted)" }}>
+                        <Icon size={13} />
+                      </button>
+                    ))}
                   </div>
+
+                  <button onClick={() => { setEditando(null); setModalOpen(true); }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110"
+                    style={{ background: "var(--color-danger)", boxShadow: "0 0 20px var(--color-danger-muted)" }}>
+                    <Plus size={15} /> Nova Despesa
+                  </button>
                 </div>
-                <p className="text-xl font-bold" style={{ color: saldo >= 0 ? (dm ? "#a3e635" : "#15803d") : (dm ? "#f87171" : "#dc2626"), letterSpacing: "-0.02em" }}>
-                  {fmt(saldo)}
-                </p>
               </div>
-            </div>
 
-            {/* Toolbar */}
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-              <div className="flex flex-wrap gap-2 items-center">
-
-                {/* Search */}
-                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
-                  style={{ background: bgInput, border: `1px solid ${bdInput}`, minWidth: 220 }}>
-                  <Search size={13} style={{ color: txMuted, flexShrink: 0 }} />
-                  <input
-                    type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Buscar descrição…"
-                    className="bg-transparent outline-none w-full text-sm"
-                    style={{ color: txPrimary, caretColor: "#a3e635" }}
-                  />
-                  {search && (
-                    <button onClick={() => setSearch("")} style={{ color: txMuted, cursor: "pointer", flexShrink: 0 }}>
-                      <X size={12} />
+              {/* Lista vazia */}
+              {filtrados.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                    style={{ background: "var(--color-danger-muted)", border: "1px solid var(--color-danger-ring)" }}>
+                    <TrendingDown size={24} style={{ color: "var(--color-danger)" }} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: "var(--tx-primary)" }}>
+                      {search ? "Nenhuma despesa encontrada" : "Sem despesas registradas"}
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: "var(--tx-sub)" }}>
+                      {search
+                        ? `Nenhuma despesa para "${search}"`
+                        : "Registre sua primeira despesa para ver os dados no dashboard"}
+                    </p>
+                  </div>
+                  {!search && (
+                    <button onClick={() => { setEditando(null); setModalOpen(true); }}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:brightness-110 transition-all"
+                      style={{ background: "var(--color-danger)" }}>
+                      <Plus size={14} /> Registrar despesa
                     </button>
                   )}
                 </div>
 
-                {/* Filtro tipo */}
-                <div className="flex items-center gap-1 p-1 rounded-xl"
-                  style={{ background: dm ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)", border: `1px solid ${bdDiv}` }}>
-                  {[
-                    { key: "all",     label: "Todos" },
-                    { key: "income",  label: "Receitas" },
-                    { key: "expense", label: "Despesas" },
-                  ].map(({ key, label }) => {
-                    const active = filtroTipo === key;
-                    const styles = {
-                      all:     { c: dm ? "#f1f5f9" : "#0f172a", bg: dm ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)", bd: dm ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)" },
-                      income:  { c: dm ? "#a3e635" : "#15803d",  bg: "rgba(163,230,53,0.1)",  bd: "rgba(163,230,53,0.22)" },
-                      expense: { c: dm ? "#f87171" : "#dc2626",  bg: "rgba(239,68,68,0.1)",   bd: "rgba(239,68,68,0.22)" },
-                    };
+              ) : viewMode === "list" ? (
+                <div className="rounded-2xl overflow-hidden"
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
+                  <div className="grid px-5 py-3 items-center"
+                    style={{ gridTemplateColumns: "1fr 110px 100px 110px 56px",
+                      borderBottom: "1px solid var(--bd-div)" }}>
+                    {["Descrição", "Data", "Categoria", "Valor", ""].map(h => (
+                      <span key={h} style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+                        textTransform: "uppercase", color: "var(--tx-muted)" }}>{h}</span>
+                    ))}
+                  </div>
+                  {filtrados.map((s, i) => {
+                    const cat = catInfo(s.categoria);
                     return (
-                      <button key={key} type="button" onClick={() => setFiltroTipo(key)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                        style={active
-                          ? { background: styles[key].bg, color: styles[key].c, border: `1px solid ${styles[key].bd}` }
-                          : { color: txMuted, border: "1px solid transparent" }}>
-                        {label}
-                      </button>
+                      <div key={s.id} className="grid px-5 py-3.5 items-center group cursor-default transition-colors"
+                        style={{ gridTemplateColumns: "1fr 110px 100px 110px 56px",
+                          borderBottom: i < filtrados.length - 1 ? "1px solid var(--bd-div)" : "none" }}
+                        onMouseEnter={e => e.currentTarget.style.background = "var(--bg-hover)"}
+                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ background: `${cat.color}18` }}>
+                            <TrendingDown size={13} style={{ color: cat.color }} />
+                          </div>
+                          <p className="text-sm font-medium truncate" style={{ color: "var(--tx-primary)" }}>{s.descriptor}</p>
+                        </div>
+                        <span className="text-xs font-mono" style={{ color: "var(--tx-sub)" }}>{fmtDate(s.data)}</span>
+                        <span className="text-[11px] font-semibold px-2 py-1 rounded-lg inline-flex items-center gap-1 w-fit"
+                          style={{ background: `${cat.color}15`, color: cat.color, border: `1px solid ${cat.color}30` }}>
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: cat.color }} />
+                          {cat.label}
+                        </span>
+                        <span className="text-sm font-bold tabular-nums" style={{ color: "var(--color-danger)" }}>
+                          −{fmt(s.price)}
+                        </span>
+                        <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                          {[
+                            { action: () => { setEditando(s); setModalOpen(true); }, Icon: Pencil, hoverBd: "var(--accent-ring)" },
+                            { action: () => setDeletando(s), Icon: Trash2, hoverBd: "var(--color-danger-ring)" },
+                          ].map(({ action, Icon, hoverBd }, idx) => (
+                            <button key={idx} onClick={action}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                              style={{ border: "1px solid var(--bd-div)", background: "transparent" }}
+                              onMouseEnter={e => e.currentTarget.style.borderColor = hoverBd}
+                              onMouseLeave={e => e.currentTarget.style.borderColor = "var(--bd-div)"}>
+                              <Icon size={11} style={{ color: "var(--tx-sub)" }} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
-              </div>
 
-              <button type="button" onClick={() => { setEditando(null); setModalOpen(true); }}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-black transition-all hover:brightness-110 shrink-0"
-                style={{ background: "linear-gradient(135deg,#a3e635,#65a30d)", boxShadow: "0 0 20px rgba(163,230,53,0.18)" }}>
-                <Plus size={15} /> Novo Lançamento
-              </button>
-            </div>
-
-            {/* Lista */}
-            {loading ? (
-              <div className="flex flex-col gap-2">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-14 rounded-xl animate-pulse"
-                    style={{ background: dm ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.05)" }} />
-                ))}
-              </div>
-
-            ) : filtrados.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                  style={{ background: dm ? "rgba(163,230,53,0.08)" : "rgba(22,163,74,0.08)", border: `1px solid ${dm ? "rgba(163,230,53,0.15)" : "rgba(22,163,74,0.15)"}` }}>
-                  <Wallet size={24} style={{ color: dm ? "#a3e635" : "#15803d" }} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: txPrimary }}>
-                    {search ? "Nenhum resultado encontrado" : "Sem lançamentos"}
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: txSub }}>
-                    {search ? `Nenhum lançamento para "${search}"` : "Registre sua primeira receita ou despesa"}
-                  </p>
-                </div>
-                {!search && (
-                  <button type="button" onClick={() => { setEditando(null); setModalOpen(true); }}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-black hover:brightness-110 transition-all"
-                    style={{ background: "linear-gradient(135deg,#a3e635,#65a30d)" }}>
-                    <Plus size={14} /> Novo lançamento
-                  </button>
-                )}
-              </div>
-
-            ) : (
-              <div className="rounded-2xl overflow-hidden"
-                style={{ background: bgCard, border: `1px solid ${bdCard}` }}>
-
-                {/* Header tabela */}
-                <div className="grid px-5 py-3 items-center"
-                  style={{ gridTemplateColumns: "1fr 96px 88px 112px 56px", borderBottom: `1px solid ${bdDiv}` }}>
-                  {["Descrição", "Data", "Tipo", "Valor", ""].map((h) => (
-                    <span key={h} className="text-[10px] font-bold tracking-[0.12em] uppercase" style={{ color: txMuted }}>{h}</span>
-                  ))}
-                </div>
-
-                {/* Rows */}
-                {filtrados.map((s, i) => (
-                  <div key={s.id}
-                    className="grid px-5 py-3.5 items-center group transition-colors cursor-default"
-                    style={{
-                      gridTemplateColumns: "1fr 96px 88px 112px 56px",
-                      borderBottom: i < filtrados.length - 1 ? `1px solid ${bdDiv}` : "none",
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = dm ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.025)"}
-                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                  >
-                    {/* Descrição */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                        style={{ background: s.type === "income" ? "rgba(163,230,53,0.1)" : "rgba(239,68,68,0.1)" }}>
-                        {s.type === "income"
-                          ? <TrendingUp  size={12} style={{ color: "#a3e635" }} />
-                          : <TrendingDown size={12} style={{ color: "#ef4444" }} />
-                        }
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {filtrados.map(s => {
+                    const cat = catInfo(s.categoria);
+                    return (
+                      <div key={s.id} className="relative rounded-2xl p-4 flex flex-col gap-3 overflow-hidden group transition-transform hover:-translate-y-0.5"
+                        style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
+                        <div className="absolute top-0 right-0 w-24 h-24 rounded-full pointer-events-none"
+                          style={{ background: cat.color, opacity: 0.06, filter: "blur(24px)", transform: "translate(30%,-30%)" }} />
+                        <div className="flex items-start justify-between">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ background: `${cat.color}18` }}>
+                            <TrendingDown size={13} style={{ color: cat.color }} />
+                          </div>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {[
+                              { action: () => { setEditando(s); setModalOpen(true); }, Icon: Pencil, hoverBd: "var(--accent-ring)" },
+                              { action: () => setDeletando(s), Icon: Trash2, hoverBd: "var(--color-danger-ring)" },
+                            ].map(({ action, Icon, hoverBd }, idx) => (
+                              <button key={idx} onClick={action}
+                                className="w-6 h-6 rounded-lg flex items-center justify-center transition-all"
+                                style={{ border: "1px solid var(--bd-div)", background: "transparent" }}
+                                onMouseEnter={e => e.currentTarget.style.borderColor = hoverBd}
+                                onMouseLeave={e => e.currentTarget.style.borderColor = "var(--bd-div)"}>
+                                <Icon size={10} style={{ color: "var(--tx-sub)" }} />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium truncate" style={{ color: "var(--tx-primary)" }}>{s.descriptor}</p>
+                          <p className="text-[11px] mt-0.5" style={{ color: "var(--tx-muted)" }}>{fmtDate(s.data)}</p>
+                        </div>
+                        <div className="flex items-center justify-between mt-auto">
+                          <span className="text-[11px] font-semibold px-2 py-1 rounded-lg inline-flex items-center gap-1"
+                            style={{ background: `${cat.color}15`, color: cat.color, border: `1px solid ${cat.color}30` }}>
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: cat.color }} />
+                            {cat.label}
+                          </span>
+                          <span className="text-sm font-bold tabular-nums" style={{ color: "var(--color-danger)" }}>
+                            −{fmt(s.price)}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-sm font-medium truncate" style={{ color: txPrimary }}>{s.descriptor}</span>
-                    </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </main>
 
-                    {/* Data */}
-                    <span className="text-xs font-mono" style={{ color: txSub }}>{fmtDate(s.data)}</span>
-
-                    {/* Badge */}
-                    <span className="text-[11px] font-semibold px-2 py-1 rounded-lg inline-block"
-                      style={s.type === "income"
-                        ? { background: dm ? "rgba(163,230,53,0.08)" : "rgba(22,163,74,0.08)", color: dm ? "#a3e635" : "#15803d", border: `1px solid ${dm ? "rgba(163,230,53,0.18)" : "rgba(22,163,74,0.2)"}` }
-                        : { background: dm ? "rgba(239,68,68,0.08)" : "rgba(220,38,38,0.06)", color: dm ? "#f87171" : "#dc2626", border: `1px solid ${dm ? "rgba(239,68,68,0.18)" : "rgba(220,38,38,0.15)"}` }
-                      }>
-                      {s.type === "income" ? "Receita" : "Despesa"}
-                    </span>
-
-                    {/* Valor */}
-                    <span className="text-sm font-bold tabular-nums"
-                      style={{ color: s.type === "income" ? (dm ? "#a3e635" : "#15803d") : (dm ? "#f87171" : "#dc2626") }}>
-                      {s.type === "income" ? "+" : "−"}{fmt(s.price)}
-                    </span>
-
-                    {/* Ações */}
-                    <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                      {[
-                        { action: () => { setEditando(s); setModalOpen(true); }, Icon: Pencil, hoverBd: "rgba(163,230,53,0.35)" },
-                        { action: () => setDeletando(s), Icon: Trash2, hoverBd: "rgba(239,68,68,0.35)" },
-                      ].map(({ action, Icon, hoverBd }, idx) => (
-                        <button key={idx} type="button" onClick={action}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-                          style={{ border: `1px solid ${bdDiv}`, background: "transparent" }}
-                          onMouseEnter={e => e.currentTarget.style.borderColor = hoverBd}
-                          onMouseLeave={e => e.currentTarget.style.borderColor = bdDiv}>
-                          <Icon size={11} style={{ color: txSub }} />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </main>
-
-        <BottomNav />
-
-        <SpentModal
-          open={modalOpen}
-          onClose={() => { setModalOpen(false); setEditando(null); }}
-          onSave={editando ? handleEditar : handleCriar}
-          inicial={editando}
-        />
-        <DeleteModal
-          open={!!deletando}
-          item={deletando}
-          onConfirm={handleDeletar}
-          onClose={() => setDeletando(null)}
-        />
-      </div>
+      <BottomNav />
+      <DespesaModal open={modalOpen} onClose={() => { setModalOpen(false); setEditando(null); }}
+        onSave={editando ? handleEditar : handleCriar} inicial={editando} />
+      <DeleteModal open={!!deletando} item={deletando}
+        onConfirm={handleDeletar} onClose={() => setDeletando(null)} />
     </div>
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function FilterBtn({ active, onClick, color, children }) {
+  return (
+    <button onClick={onClick}
+      className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
+      style={active
+        ? color
+          ? { background: `${color}18`, color, border: `1px solid ${color}35` }
+          : { background: "var(--bg-card)", color: "var(--tx-primary)", border: "1px solid var(--bd-card)" }
+        : { color: "var(--tx-muted)", border: "1px solid transparent" }}>
+      {children}
+    </button>
   );
 }

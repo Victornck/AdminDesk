@@ -1,9 +1,12 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/**
+ * theme.css — Variáveis de tema para todo o app
+ * O ThemeProvider injeta dark/light via classe no <html>.
+ * Todas as páginas leem daqui — zero JS inline para cores.
+ */
 
-/* ── Tokens modo claro ─────────────────────────────────────────────────────── */
+/* ── Tokens base (modo claro) ──────────────────────────────────────────────── */
 :root {
+  /* Superfícies */
   --bg-page:    #f0f2f5;
   --bg-card:    #ffffff;
   --bg-card-2:  #f8fafc;
@@ -12,14 +15,17 @@
   --bg-hover:   rgba(0, 0, 0, 0.025);
   --bg-subtle:  rgba(0, 0, 0, 0.04);
 
+  /* Bordas */
   --bd-card:    rgba(0, 0, 0, 0.09);
   --bd-div:     rgba(0, 0, 0, 0.07);
   --bd-input:   rgba(0, 0, 0, 0.12);
 
+  /* Texto */
   --tx-primary: #0f172a;
   --tx-sub:     #475569;
   --tx-muted:   #94a3b8;
 
+  /* Semântico — não muda com accent */
   --color-danger:       #ef4444;
   --color-danger-muted: rgba(239, 68, 68, 0.10);
   --color-danger-ring:  rgba(239, 68, 68, 0.25);
@@ -27,12 +33,11 @@
   --color-purple:       #a78bfa;
   --color-blue:         #60a5fa;
 
-  /* Accent padrão — sobrescrito pelo ThemeProvider */
+  /* Accent — sobrescrito pelo ThemeProvider */
   --accent:            #3b82f6;
   --accent-muted:      #eff6ff;
   --accent-ring:       #bfdbfe;
   --accent-shadow-css: 0 4px 14px rgba(59, 130, 246, 0.35);
-  --ui-density:        1;
 }
 
 /* ── Tokens modo escuro ────────────────────────────────────────────────────── */
@@ -54,7 +59,7 @@ html.dark {
   --tx-muted:   rgba(255, 255, 255, 0.28);
 }
 
-/* ── Utilitários globais ───────────────────────────────────────────────────── */
+/* ── Utilitários globais (accent + density) ────────────────────────────────── */
 .btn-accent {
   background-color: var(--accent);
   box-shadow: var(--accent-shadow-css);
@@ -73,8 +78,5 @@ html.dark {
   outline: none;
 }
 
-.density-py  {
-  padding-top:    calc(0.625rem * var(--ui-density, 1));
-  padding-bottom: calc(0.625rem * var(--ui-density, 1));
-}
+.density-py  { padding-top: calc(0.625rem * var(--ui-density, 1)); padding-bottom: calc(0.625rem * var(--ui-density, 1)); }
 .density-gap { gap: calc(1rem * var(--ui-density, 1)); }

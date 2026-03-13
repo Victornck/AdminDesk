@@ -1,332 +1,378 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sidebar, BottomNav, MobileDrawer, MenuButton } from "../components/Sidebar";
+import { Sidebar, BottomNav, MobileDrawer } from "../components/Sidebar";
+import { PageHeader } from "../components/PageHeader";
+import { useTheme } from "../hooks/useTheme";
 import {
-  TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
-  MoreHorizontal, Bell, Sun, Moon, Search, Plus, Wallet,
-  ChevronRight, SlidersHorizontal
+  TrendingUp, TrendingDown, ArrowUpRight,
+  MoreHorizontal, Search, Wallet,
+  ChevronRight, SlidersHorizontal, Users,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer
+  Tooltip, ResponsiveContainer,
 } from "recharts";
 
-const API_URL = "http://localhost:8080";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+const MESES   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
-function getToken() {
-  return localStorage.getItem("token");
+function getToken() { return localStorage.getItem("token") ?? ""; }
+
+const fmt = (v) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
+
+// ─── Tooltip ──────────────────────────────────────────────────────────────────
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{
+      background: "var(--bg-card)", border: "1px solid var(--bd-card)",
+      borderRadius: 12, padding: "10px 14px", boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+    }}>
+      <p style={{ color: "var(--tx-muted)", fontSize: 11, fontWeight: 600,
+        textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>{label}</p>
+      {payload.map((p, i) => (
+        <p key={i} style={{ display: "flex", justifyContent: "space-between", gap: 24, fontSize: 13 }}>
+          <span style={{ color: "var(--tx-muted)" }}>{p.name}</span>
+          <span style={{ color: p.color, fontWeight: 600 }}>{fmt(p.value)}</span>
+        </p>
+      ))}
+    </div>
+  );
 }
 
-const fmt = (value) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
-
-const CustomTooltip = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 shadow-xl text-sm">
-        <p className="text-zinc-400 mb-2 text-[11px] font-medium uppercase tracking-wider">{label}</p>
-        {payload.map((p, i) => (
-          <p key={i} className="flex items-center justify-between gap-6">
-            <span className="text-zinc-400">{p.name}</span>
-            <span className="font-semibold" style={{ color: p.color }}>{fmt(p.value)}</span>
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
-
-export default function Dashboard() {
-  const navigate = useNavigate();
-  const [darkMode, setDarkMode] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [dashboardData, setDashboardData] = useState({ totalReceitas: 0, totalDespesas: 0, lucro: 0 });
-  const [areaData, setAreaData] = useState([]);
-  const [recentClients, setRecentClients] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const toggleTheme = () => {
-    setDarkMode(!darkMode);
-    document.documentElement.classList.toggle("dark");
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
+// ─── Recharts não aceita CSS vars em SVG — lê o valor computado via observer ──
+function AccentAreaChart({ data }) {
+  const [accentHex, setAccentHex] = useState("#3b82f6");
+  const [gridColor, setGridColor] = useState("#e2e8f0");
 
   useEffect(() => {
-    const fetchAll = async () => {
-      setLoading(true);
-      const headers = { Authorization: `Bearer ${getToken()}` };
-      try {
-        const dashRes = await fetch(`${API_URL}/dashboard`, { headers });
-        if (dashRes.status === 401) { handleLogout(); return; }
-        const dash = await dashRes.json();
-        setDashboardData({
-          totalReceitas: dash.totalReceitas || 0,
-          totalDespesas: dash.totalDespesas || 0,
-          lucro: dash.lucro || 0,
-        });
-        setAreaData(dash.grafico || []);
-      } catch (e) { console.error(e); }
-      try {
-        const clientRes = await fetch(`${API_URL}/clients`, { headers });
-        const clients = await clientRes.json();
-        setRecentClients(clients.slice(0, 5));
-      } catch (e) { console.error(e); }
-      setLoading(false);
-    };
-    fetchAll();
+    function readVars() {
+      const style  = getComputedStyle(document.documentElement);
+      const accent = style.getPropertyValue("--accent").trim();
+      const grid   = style.getPropertyValue("--bd-div").trim();
+      if (accent) setAccentHex(accent);
+      if (grid)   setGridColor(grid);
+    }
+    readVars();
+    const obs = new MutationObserver(readVars);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class"] });
+    return () => obs.disconnect();
   }, []);
 
-  const lucroPositivo = dashboardData.lucro >= 0;
-  const gridStroke = darkMode ? "#27272a" : "#f4f4f5";
-  const tickColor = darkMode ? "#71717a" : "#a1a1aa";
+  return (
+    <ResponsiveContainer width="100%" height={200}>
+      <AreaChart data={data} margin={{ top: 2, right: 0, left: -22, bottom: 0 }}>
+        <defs>
+          <linearGradient id="gradReceita" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={accentHex} stopOpacity={0.2} />
+            <stop offset="100%" stopColor={accentHex} stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="gradDespesa" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.13} />
+            <stop offset="100%" stopColor="#f43f5e" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+        <XAxis dataKey="time" tick={{ fill: "var(--tx-muted)", fontSize: 11 }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fill: "var(--tx-muted)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
+        <Tooltip content={<CustomTooltip />} />
+        <Area type="monotone" dataKey="receita" name="Receita"
+          stroke={accentHex} strokeWidth={2} fill="url(#gradReceita)"
+          dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: accentHex }} />
+        <Area type="monotone" dataKey="despesa" name="Despesa"
+          stroke="#f43f5e" strokeWidth={2} fill="url(#gradDespesa)"
+          dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: "#f43f5e" }} />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const [spentsReceitas,  setSpentsReceitas]  = useState(0);
+  const [totalDespesas,   setTotalDespesas]   = useState(0);
+  const [receitaClientes, setReceitaClientes] = useState(0);
+  const [areaData,        setAreaData]        = useState([]);
+  const [recentClients,   setRecentClients]   = useState([]);
+  const [loading,         setLoading]         = useState(true);
+
+  function handleLogout() { localStorage.removeItem("token"); navigate("/login"); }
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const headers = { Authorization: `Bearer ${getToken()}` };
+      let grafico = [], mrr = 0;
+
+      try {
+        const res = await fetch(`${API_URL}/dashboard`, { headers });
+        if (res.status === 401) { handleLogout(); return; }
+        const dash = await res.json();
+        if (!cancelled) {
+          setSpentsReceitas(dash.totalReceitas || 0);
+          setTotalDespesas(dash.totalDespesas  || 0);
+          grafico = dash.grafico || [];
+        }
+      } catch (e) { console.error(e); }
+
+      try {
+        const res = await fetch(`${API_URL}/clients`, { headers });
+        if (res.ok) {
+          const clients = await res.json();
+          mrr = clients.reduce((a, c) => a + (c.valueMonthly || 0), 0);
+          if (!cancelled) {
+            setReceitaClientes(mrr);
+            setRecentClients(clients.slice(0, 5));
+          }
+        }
+      } catch (e) { console.error(e); }
+
+      if (mrr > 0) {
+        const mes = MESES[new Date().getMonth()];
+        const existe = grafico.find(p => p.time === mes);
+        grafico = existe
+          ? grafico.map(p => p.time === mes ? { ...p, receita: (p.receita || 0) + mrr } : p)
+          : [...grafico, { time: mes, receita: mrr, despesa: 0 }]
+              .sort((a, b) => MESES.indexOf(a.time) - MESES.indexOf(b.time));
+      }
+
+      if (!cancelled) { setAreaData(grafico); setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const totalReceitas = spentsReceitas + receitaClientes;
+  const lucro         = totalReceitas - totalDespesas;
+  const lucroPositivo = lucro >= 0;
 
   return (
-    <div className={darkMode ? "dark" : ""}>
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans flex transition-colors duration-300">
+    <div style={{ minHeight: "100vh", display: "flex", background: "var(--bg-page)",
+      color: "var(--tx-primary)", fontFamily: "inherit" }}>
+      <Sidebar onLogout={handleLogout} />
+      <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
 
-        <Sidebar onLogout={handleLogout} />
-        <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
+      <main className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-0">
 
-        <main className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-0">
+        <PageHeader
+          title="Dashboard"
+          initials="JS"
+          onMenuClick={() => setMobileOpen(true)}
+        >
+          {/* Busca — slot children do PageHeader */}
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg"
+            style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
+            <Search size={13} style={{ color: "var(--tx-muted)" }} />
+            <input placeholder="Buscar..."
+              className="bg-transparent text-sm outline-none w-36"
+              style={{ color: "var(--tx-sub)", caretColor: "var(--accent)" }} />
+          </div>
+        </PageHeader>
 
-          {/* Header */}
-          <header className="sticky top-0 z-10 bg-zinc-50/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-4 md:px-8 h-14 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <MenuButton onClick={() => setMobileOpen(true)} />
-              <span className="text-sm font-semibold tracking-tight">Dashboard</span>
+        <div className="p-5 md:p-8 flex flex-col gap-5">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-widest mb-0.5"
+                style={{ color: "var(--tx-muted)" }}>Visão geral</p>
+              <h1 className="text-xl font-bold tracking-tight" style={{ color: "var(--tx-primary)" }}>
+                {new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+                  .replace(/^\w/, c => c.toUpperCase())}
+              </h1>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="hidden md:flex items-center gap-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-1.5">
-                <Search size={13} className="text-zinc-400 shrink-0" />
-                <input
-                  placeholder="Buscar..."
-                  className="bg-transparent text-sm text-zinc-600 dark:text-zinc-400 outline-none w-36 placeholder:text-zinc-400"
-                />
-              </div>
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-              >
-                {darkMode ? <Sun size={14} /> : <Moon size={14} />}
-              </button>
-              <button className="relative p-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
-                <Bell size={14} />
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-              </button>
-              <div className="w-7 h-7 rounded-lg bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-[11px] font-bold text-white dark:text-zinc-900 tracking-tight">
-                JS
-              </div>
+            <button className="hidden md:flex items-center gap-1.5 text-xs transition-colors"
+              style={{ color: "var(--tx-muted)" }}>
+              <SlidersHorizontal size={12} /> Filtrar período
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-24">
+              <div className="w-5 h-5 border-2 rounded-full animate-spin"
+                style={{ borderColor: "var(--bd-div)", borderTopColor: "var(--accent)" }} />
             </div>
-          </header>
+          ) : (
+            <>
+              {/* KPI Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
-          <div className="p-5 md:p-8 flex flex-col gap-5">
-
-            {/* Page header */}
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-[11px] font-medium text-zinc-400 uppercase tracking-widest mb-0.5">Visão geral</p>
-                <h1 className="text-xl font-bold tracking-tight">
-                  {new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase())}
-                </h1>
-              </div>
-              <button className="hidden md:flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
-                <SlidersHorizontal size={12} />
-                Filtrar período
-              </button>
-            </div>
-
-            {loading ? (
-              <div className="flex items-center justify-center py-24">
-                <div className="w-5 h-5 border-2 border-zinc-200 dark:border-zinc-700 border-t-zinc-900 dark:border-t-zinc-100 rounded-full animate-spin" />
-              </div>
-            ) : (
-              <>
-                {/* Stat Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-
-                  {/* Receitas */}
-                  <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col gap-3 hover:shadow-sm transition-shadow">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                        <span className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Receitas</span>
-                      </div>
-                      <TrendingUp size={14} className="text-emerald-500" />
+                {/* Receitas */}
+                <Card>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)" }} />
+                      <span className="text-[11px] font-semibold uppercase tracking-widest"
+                        style={{ color: "var(--tx-muted)" }}>Receitas</span>
                     </div>
-                    <p className="text-[26px] font-bold tracking-tight leading-none text-zinc-900 dark:text-zinc-50">
-                      {fmt(dashboardData.totalReceitas)}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-zinc-400 flex items-center gap-1">
-                        <ArrowUpRight size={11} className="text-emerald-500" /> Entradas registradas
-                      </span>
-                      <div className="h-1 w-20 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: "72%" }} />
-                      </div>
-                    </div>
+                    <TrendingUp size={14} style={{ color: "var(--accent)" }} />
                   </div>
-
-                  {/* Despesas */}
-                  <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col gap-3 hover:shadow-sm transition-shadow">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />
-                        <span className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Despesas</span>
-                      </div>
-                      <TrendingDown size={14} className="text-rose-500" />
-                    </div>
-                    <p className="text-[26px] font-bold tracking-tight leading-none text-zinc-900 dark:text-zinc-50">
-                      {fmt(dashboardData.totalDespesas)}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-zinc-400 flex items-center gap-1">
-                        <ArrowDownRight size={11} className="text-rose-500" /> Saídas registradas
-                      </span>
-                      <div className="h-1 w-20 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-rose-500 rounded-full" style={{ width: "38%" }} />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Lucro — card invertido (dark quando light, light quando dark) */}
-                  <div className={`rounded-2xl p-5 flex flex-col gap-3 border transition-colors ${
-                    lucroPositivo
-                      ? "bg-zinc-900 dark:bg-white border-zinc-800 dark:border-zinc-200"
-                      : "bg-rose-600 border-rose-500"
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-1.5 h-1.5 rounded-full inline-block ${lucroPositivo ? "bg-emerald-400" : "bg-rose-300"}`} />
-                        <span className={`text-[11px] font-semibold uppercase tracking-widest ${lucroPositivo ? "text-zinc-500 dark:text-zinc-400" : "text-rose-200"}`}>
-                          Lucro Líquido
+                  <p className="text-[26px] font-bold tracking-tight leading-none"
+                    style={{ color: "var(--tx-primary)" }}>
+                    {fmt(totalReceitas)}
+                  </p>
+                  {receitaClientes > 0 && (
+                    <div className="flex flex-col gap-1 pt-2" style={{ borderTop: "1px solid var(--bd-div)" }}>
+                      {spentsReceitas > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] flex items-center gap-1" style={{ color: "var(--tx-muted)" }}>
+                            <ArrowUpRight size={10} style={{ color: "var(--accent)" }} /> Lançamentos
+                          </span>
+                          <span className="text-[11px] font-medium" style={{ color: "var(--tx-sub)" }}>
+                            {fmt(spentsReceitas)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] flex items-center gap-1" style={{ color: "var(--tx-muted)" }}>
+                          <Users size={10} style={{ color: "var(--accent)" }} /> Clientes (MRR)
+                        </span>
+                        <span className="text-[11px] font-medium" style={{ color: "var(--tx-sub)" }}>
+                          {fmt(receitaClientes)}
                         </span>
                       </div>
-                      <Wallet size={14} className={lucroPositivo ? "text-zinc-500 dark:text-zinc-400" : "text-rose-200"} />
                     </div>
-                    <p className={`text-[26px] font-bold tracking-tight leading-none ${
-                      lucroPositivo ? "text-white dark:text-zinc-900" : "text-white"
-                    }`}>
-                      {fmt(dashboardData.lucro)}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs flex items-center gap-1 ${lucroPositivo ? "text-zinc-500 dark:text-zinc-400" : "text-rose-200"}`}>
-                        {lucroPositivo
-                          ? <><ArrowUpRight size={11} className="text-emerald-400" /> Resultado positivo</>
-                          : <><ArrowDownRight size={11} /> Prejuízo no período</>
-                        }
+                  )}
+                </Card>
+
+                {/* Despesas */}
+                <Card>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                      <span className="text-[11px] font-semibold uppercase tracking-widest"
+                        style={{ color: "var(--tx-muted)" }}>Despesas</span>
+                    </div>
+                    <TrendingDown size={14} className="text-rose-500" />
+                  </div>
+                  <p className="text-[26px] font-bold tracking-tight leading-none"
+                    style={{ color: "var(--tx-primary)" }}>
+                    {fmt(totalDespesas)}
+                  </p>
+                </Card>
+
+                {/* Lucro */}
+                <div className="rounded-2xl p-5 flex flex-col gap-3"
+                  style={lucroPositivo
+                    ? { background: "var(--accent)", boxShadow: "var(--accent-shadow-css)", border: "1px solid var(--accent)" }
+                    : { background: "#dc2626", border: "1px solid #ef4444" }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
+                      <span className="text-[11px] font-semibold uppercase tracking-widest text-white/70">
+                        Lucro Líquido
                       </span>
-                      <div className={`h-1 w-20 rounded-full overflow-hidden ${lucroPositivo ? "bg-zinc-800 dark:bg-zinc-200" : "bg-rose-500"}`}>
-                        <div className={`h-full rounded-full ${lucroPositivo ? "bg-emerald-400" : "bg-rose-300"}`} style={{ width: "61%" }} />
-                      </div>
+                    </div>
+                    <Wallet size={14} className="text-white/70" />
+                  </div>
+                  <p className="text-[26px] font-bold tracking-tight leading-none text-white">{fmt(lucro)}</p>
+                  <p className="text-[11px] text-white/60">
+                    {fmt(totalReceitas)} receitas − {fmt(totalDespesas)} despesas
+                  </p>
+                </div>
+              </div>
+
+              {/* Gráfico */}
+              <Card>
+                <div className="flex items-start justify-between mb-5">
+                  <div>
+                    <h3 className="text-sm font-semibold" style={{ color: "var(--tx-primary)" }}>
+                      Receitas vs Despesas
+                    </h3>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--tx-muted)" }}>Evolução mensal</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full" style={{ background: "var(--accent)" }} />
+                      <span className="text-[11px]" style={{ color: "var(--tx-muted)" }}>Receitas</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-rose-400" />
+                      <span className="text-[11px]" style={{ color: "var(--tx-muted)" }}>Despesas</span>
                     </div>
                   </div>
                 </div>
-
-                {/* Chart */}
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5">
-                  <div className="flex items-start justify-between mb-5">
-                    <div>
-                      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Receitas vs Despesas</h3>
-                      <p className="text-xs text-zinc-400 mt-0.5">Evolução mensal</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                        <span className="text-[11px] text-zinc-400">Receitas</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-rose-400 inline-block" />
-                        <span className="text-[11px] text-zinc-400">Despesas</span>
-                      </div>
-                      <button className="text-zinc-300 dark:text-zinc-600 hover:text-zinc-500 transition-colors ml-1">
-                        <MoreHorizontal size={15} />
-                      </button>
-                    </div>
+                {areaData.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-[200px] gap-3">
+                    <TrendingUp size={17} style={{ color: "var(--tx-muted)" }} />
+                    <p className="text-xs" style={{ color: "var(--tx-muted)" }}>Nenhum dado financeiro registrado</p>
                   </div>
+                ) : (
+                  <AccentAreaChart data={areaData} />
+                )}
+              </Card>
 
-                  {areaData.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-[200px] gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-                        <TrendingUp size={17} className="text-zinc-400" />
-                      </div>
-                      <p className="text-xs text-zinc-400">Nenhum dado financeiro registrado</p>
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height={200}>
-                      <AreaChart data={areaData} margin={{ top: 2, right: 0, left: -22, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="gradReceita" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#10b981" stopOpacity={0.18} />
-                            <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="gradDespesa" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.13} />
-                            <stop offset="100%" stopColor="#f43f5e" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                        <XAxis dataKey="time" tick={{ fill: tickColor, fontSize: 11 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: tickColor, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `R$${v}`} />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Area type="monotone" dataKey="receita" name="Receita" stroke="#10b981" strokeWidth={2} fill="url(#gradReceita)" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
-                        <Area type="monotone" dataKey="despesa" name="Despesa" stroke="#f43f5e" strokeWidth={2} fill="url(#gradDespesa)" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  )}
+              {/* Clientes recentes */}
+              <Card noPadding>
+                <div className="flex items-center justify-between px-5 py-4"
+                  style={{ borderBottom: "1px solid var(--bd-div)" }}>
+                  <div>
+                    <h3 className="text-sm font-semibold" style={{ color: "var(--tx-primary)" }}>
+                      Clientes Recentes
+                    </h3>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--tx-muted)" }}>
+                      {recentClients.length} cadastrados
+                    </p>
+                  </div>
+                  <button onClick={() => navigate("/clientes")}
+                    className="flex items-center gap-1 text-xs font-medium transition-opacity hover:opacity-75"
+                    style={{ color: "var(--accent)" }}>
+                    Ver todos <ChevronRight size={12} />
+                  </button>
                 </div>
-
-                {/* Recent Clients */}
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
-                  <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 dark:border-zinc-800">
-                    <div>
-                      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Clientes Recentes</h3>
-                      <p className="text-xs text-zinc-400 mt-0.5">{recentClients.length} cadastrados</p>
-                    </div>
-                    <button
-                      onClick={() => navigate("/clientes")}
-                      className="flex items-center gap-1 text-xs font-medium text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-                    >
-                      Ver todos <ChevronRight size={12} />
-                    </button>
+                {recentClients.length === 0 ? (
+                  <div className="flex items-center justify-center py-12">
+                    <p className="text-xs" style={{ color: "var(--tx-muted)" }}>Nenhum cliente cadastrado ainda</p>
                   </div>
-
-                  {recentClients.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 gap-2">
-                      <p className="text-xs text-zinc-400">Nenhum cliente cadastrado ainda</p>
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-zinc-50 dark:divide-zinc-800/80">
-                      {recentClients.map((c, i) => (
-                        <div key={i} className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors group">
-                          <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-600 dark:text-zinc-400 shrink-0">
-                            {c.name?.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">{c.name}</p>
-                            <p className="text-[11px] text-zinc-400 truncate hidden md:block">{c.email}</p>
-                          </div>
-                          <span className="hidden md:block text-[11px] text-zinc-400">{c.phone}</span>
-                          <button className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-300 dark:text-zinc-600 hover:text-zinc-500">
-                            <MoreHorizontal size={14} />
-                          </button>
+                ) : (
+                  <div>
+                    {recentClients.map((c, i) => (
+                      <div key={i} className="flex items-center gap-3 px-5 py-3 transition-colors"
+                        style={{ borderBottom: i < recentClients.length - 1 ? "1px solid var(--bd-div)" : "none" }}
+                        onMouseEnter={e => e.currentTarget.style.background = "var(--bg-hover)"}
+                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
+                          style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>
+                          {c.name?.charAt(0).toUpperCase()}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate" style={{ color: "var(--tx-primary)" }}>{c.name}</p>
+                          <p className="text-[11px] truncate hidden md:block" style={{ color: "var(--tx-muted)" }}>{c.email}</p>
+                        </div>
+                        {(c.valueMonthly || 0) > 0 && (
+                          <span className="text-[11px] font-semibold tabular-nums shrink-0"
+                            style={{ color: "var(--accent)" }}>
+                            +{fmt(c.valueMonthly)}
+                          </span>
+                        )}
+                        <span className="hidden md:block text-[11px] shrink-0"
+                          style={{ color: "var(--tx-muted)" }}>{c.phone}</span>
+                        <button style={{ color: "var(--tx-muted)", opacity: 0 }}
+                          className="group-hover:opacity-100 transition-opacity">
+                          <MoreHorizontal size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </>
+          )}
+        </div>
+      </main>
 
-              </>
-            )}
-          </div>
-        </main>
+      <BottomNav />
+    </div>
+  );
+}
 
-        <BottomNav />
-      </div>
+function Card({ children, noPadding = false }) {
+  return (
+    <div className={`rounded-2xl flex flex-col gap-3 ${noPadding ? "overflow-hidden" : "p-5"}`}
+      style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
+      {children}
     </div>
   );
 }
