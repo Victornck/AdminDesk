@@ -49,6 +49,12 @@ public class UserService implements UserDetailsService {
         User existing = userRepository.findById(id).orElseThrow();
         existing.setNome(userAtualizado.getNome());
         existing.setEmail(userAtualizado.getEmail());
+
+        // Atualiza senha apenas se vier preenchida no body
+        if (userAtualizado.getPassword() != null && !userAtualizado.getPassword().isBlank()) {
+            existing.setPassword(passwordEncoder.encode(userAtualizado.getPassword()));
+        }
+
         return userRepository.save(existing);
     }
 

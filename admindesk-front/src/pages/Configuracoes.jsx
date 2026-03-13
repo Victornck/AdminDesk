@@ -3,6 +3,7 @@ import { Sidebar, BottomNav, MobileDrawer, MenuButton } from "../components/Side
 import {
   Bell, Sun, Moon, User, Lock, Palette, Globe, Shield, Camera,
   Check, Eye, EyeOff, Smartphone, Mail, Save, AlertCircle, IdCard, Loader2,
+  Trash2, TriangleAlert,
 } from "lucide-react";
 import { useTheme } from "../hooks/useTheme";
 
@@ -27,9 +28,9 @@ const TABS = [
 ];
 
 const NOTIFICATION_CHANNELS = [
-  { key: "email", label: "E-mail", desc: "Receba alertas por e-mail",        icon: Mail       },
-  { key: "push",  label: "Push",   desc: "Notificações no navegador",         icon: Bell       },
-  { key: "sms",   label: "SMS",    desc: "Mensagens de texto no celular",     icon: Smartphone },
+  { key: "email", label: "E-mail", desc: "Receba alertas por e-mail",     icon: Mail       },
+  { key: "push",  label: "Push",   desc: "Notificações no navegador",     icon: Bell       },
+  { key: "sms",   label: "SMS",    desc: "Mensagens de texto no celular", icon: Smartphone },
 ];
 
 const NOTIFICATION_EVENTS = [
@@ -64,10 +65,21 @@ function passwordStrength(password) {
 // ─── API ──────────────────────────────────────────────────────────────────────
 
 async function apiFetch(path, options = {}) {
+  const { headers: extraHeaders, ...restOptions } = options;
+
+  const defaultHeaders = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${getToken()}`,
+  };
+
+  const mergedHeaders = { ...defaultHeaders, ...extraHeaders };
+  Object.keys(mergedHeaders).forEach(k => mergedHeaders[k] == null && delete mergedHeaders[k]);
+
   const res = await fetch(`${API_URL}${path}`, {
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}`, ...options.headers },
-    ...options,
+    headers: mergedHeaders,
+    ...restOptions,
   });
+
   if (!res.ok) {
     const err = new Error(`HTTP ${res.status}`);
     err.status = res.status;
@@ -88,11 +100,97 @@ function validateProfile({ nome, email }) {
 
 function validatePassword({ current, newPass, confirm }) {
   const errors = {};
-  if (!current)              errors.current = "Informe a senha atual";
-  if (!newPass)              errors.newPass = "Informe a nova senha";
+  if (!current)                errors.current = "Informe a senha atual";
+  if (!newPass)                errors.newPass = "Informe a nova senha";
   else if (newPass.length < 6) errors.newPass = "Mínimo 6 caracteres";
-  if (newPass !== confirm)   errors.confirm = "As senhas não coincidem";
+  if (newPass !== confirm)     errors.confirm = "As senhas não coincidem";
   return errors;
+}
+
+// ─── Modal de Confirmação de Exclusão ─────────────────────────────────────────
+
+function DeleteAccountModal({ onConfirm, onCancel, loading }) {
+  const [confirmText, setConfirmText] = useState("");
+  const isConfirmed = confirmText === "EXCLUIR";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white dark:bg-[#120d1e] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex flex-col items-center text-center gap-3">
+          <div className="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center">
+            <TriangleAlert size={28} className="text-red-500" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Excluir conta permanentemente</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Esta ação é <span className="font-semibold text-red-500">irreversível</span>. Todos os seus dados
+              serão deletados e não poderão ser recuperados.
+            </p>
+          </div>
+        </div>
+
+        <hr className="border-gray-100 dark:border-white/5" />
+
+        <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
+          {[
+            "Seu perfil e dados pessoais serão removidos",
+            "Todo o histórico de atividades será apagado",
+            "Você perderá acesso imediato ao sistema",
+          ].map((item, i) => (
+            <li key={i} className="flex items-start gap-2">
+              <span className="mt-0.5 w-4 h-4 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              </span>
+              {item}
+            </li>
+          ))}
+        </ul>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+            Digite <span className="text-red-500 font-bold">EXCLUIR</span> para confirmar
+          </label>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={e => setConfirmText(e.target.value)}
+            placeholder="EXCLUIR"
+            autoFocus
+            className={`w-full px-4 py-2.5 rounded-xl text-sm border transition bg-gray-50 dark:bg-white/5 dark:text-white placeholder-gray-300 dark:placeholder-white/20 outline-none ${
+              isConfirmed
+                ? "border-red-500 ring-2 ring-red-500/20"
+                : "border-gray-200 dark:border-white/10 focus:border-red-400 focus:ring-2 focus:ring-red-400/20"
+            }`}
+          />
+        </div>
+
+        <div className="flex gap-3 pt-1">
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={!isConfirmed || loading}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-500 text-white transition hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-red-500"
+          >
+            {loading ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+            {loading ? "Excluindo…" : "Excluir conta"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -116,18 +214,23 @@ export default function Configuracoes() {
   const [profileApiError, setProfileApiError] = useState("");
 
   // Senha
-  const [showPassword,      setShowPassword]      = useState(false);
-  const [passwords,         setPasswords]         = useState({ current: "", newPass: "", confirm: "" });
-  const [passwordErrors,    setPasswordErrors]    = useState({});
-  const [passwordSaving,    setPasswordSaving]    = useState(false);
-  const [passwordSaved,     setPasswordSaved]     = useState(false);
-  const [passwordApiError,  setPasswordApiError]  = useState("");
+  const [showPassword,     setShowPassword]     = useState(false);
+  const [passwords,        setPasswords]        = useState({ current: "", newPass: "", confirm: "" });
+  const [passwordErrors,   setPasswordErrors]   = useState({});
+  const [passwordSaving,   setPasswordSaving]   = useState(false);
+  const [passwordSaved,    setPasswordSaved]    = useState(false);
+  const [passwordApiError, setPasswordApiError] = useState("");
 
   // Notificações
   const [notifications, setNotifications] = useState({
     email: true, push: true, sms: false, reports: true, newClients: true, expenses: false,
   });
   const [notifSaved, setNotifSaved] = useState(false);
+
+  // Exclusão de conta
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading,   setDeleteLoading]   = useState(false);
+  const [deleteApiError,  setDeleteApiError]  = useState("");
 
   // ── Carrega perfil ─────────────────────────────────────────────────────────
 
@@ -169,21 +272,37 @@ export default function Configuracoes() {
     try {
       const updated = await apiFetch(`/auth/update/${userIdRef.current}`, {
         method: "PUT",
-        body: JSON.stringify({ nome: profile.nome.trim(), email: profile.email.trim(), cpf: profileOriginal?.cpf ?? profile.cpf }),
+        body: JSON.stringify({
+          nome:  profile.nome.trim(),
+          email: profile.email.trim(),
+          cpf:   profileOriginal?.cpf ?? profile.cpf,
+        }),
       });
 
-      const data = { nome: updated.nome ?? updated.name ?? profile.nome, cpf: updated.cpf ?? profile.cpf, email: updated.email ?? profile.email };
+      const data = {
+        nome:  updated.nome  ?? updated.name ?? profile.nome,
+        cpf:   updated.cpf   ?? profile.cpf,
+        email: updated.email ?? profile.email,
+      };
       setProfile(data);
       setProfileOriginal(data);
       flash(setProfileSaved);
     } catch (err) {
-      setProfileApiError(err.status === 409 ? "Este e-mail já está em uso." : "Não foi possível salvar. Tente novamente.");
+      setProfileApiError(
+        err.status === 409
+          ? "Este e-mail já está em uso."
+          : "Não foi possível salvar. Tente novamente."
+      );
     } finally {
       setProfileSaving(false);
     }
   }
 
   // ── Salva senha ────────────────────────────────────────────────────────────
+  // Fluxo:
+  //   1. POST /auth/login sem token → verifica senha atual
+  //      Requer correção no AuthController para retornar 401 (não 403) quando errar
+  //   2. PUT /auth/update/{id} → salva nova senha (backend hasheia com BCrypt)
 
   async function handleSavePassword() {
     const errors = validatePassword(passwords);
@@ -192,26 +311,70 @@ export default function Configuracoes() {
 
     setPasswordSaving(true);
     setPasswordApiError("");
+
     try {
-      // Verifica senha atual re-autenticando
-      await apiFetch("/auth/login", {
+      // STEP 1 — verifica senha atual via login (sem JWT)
+      const loginRes = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
-        headers: {},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: profile.email, password: passwords.current }),
       });
 
-      await apiFetch(`/auth/update/${userIdRef.current}`, {
+      if (!loginRes.ok) {
+        // Trata tanto 401 quanto 403 como "senha incorreta"
+        setPasswordErrors({ current: "Senha atual incorreta" });
+        return;
+      }
+
+      // STEP 2 — salva nova senha (backend hasheia com BCrypt antes de persistir)
+      const updateRes = await fetch(`${API_URL}/auth/update/${userIdRef.current}`, {
         method: "PUT",
-        body: JSON.stringify({ nome: profile.nome, email: profile.email, cpf: profile.cpf, password: passwords.newPass }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({
+          nome:     profile.nome,
+          email:    profile.email,
+          cpf:      profile.cpf,
+          password: passwords.newPass,
+        }),
       });
+
+      if (!updateRes.ok) {
+        setPasswordApiError("Não foi possível atualizar a senha. Tente novamente.");
+        return;
+      }
 
       setPasswords({ current: "", newPass: "", confirm: "" });
       flash(setPasswordSaved);
-    } catch (err) {
-      if (err.status === 401) setPasswordErrors({ current: "Senha atual incorreta" });
-      else setPasswordApiError("Não foi possível atualizar a senha.");
+
+    } catch {
+      setPasswordApiError("Erro de conexão. Verifique sua rede e tente novamente.");
     } finally {
       setPasswordSaving(false);
+    }
+  }
+
+  // ── Exclui conta ───────────────────────────────────────────────────────────
+
+  async function handleDeleteAccount() {
+    if (!userIdRef.current) return;
+    setDeleteLoading(true);
+    setDeleteApiError("");
+    try {
+      await fetch(`${API_URL}/auth/delete/${userIdRef.current}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+      });
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    } catch {
+      setDeleteApiError("Não foi possível excluir a conta. Tente novamente.");
+      setDeleteLoading(false);
     }
   }
 
@@ -237,6 +400,14 @@ export default function Configuracoes() {
         .density-py          { padding-top: calc(0.625rem * var(--ui-density, 1)); padding-bottom: calc(0.625rem * var(--ui-density, 1)); }
         .density-gap         { gap: calc(1rem * var(--ui-density, 1)); }
       `}</style>
+
+      {showDeleteModal && (
+        <DeleteAccountModal
+          loading={deleteLoading}
+          onConfirm={handleDeleteAccount}
+          onCancel={() => { if (!deleteLoading) { setShowDeleteModal(false); setDeleteApiError(""); } }}
+        />
+      )}
 
       <div className="min-h-screen bg-gray-50 dark:bg-[#0d0816] text-gray-900 dark:text-white font-sans flex transition-colors duration-300">
         <Sidebar />
@@ -301,7 +472,6 @@ export default function Configuracoes() {
                       </div>
                     ) : (
                       <>
-                        {/* Avatar */}
                         <div className="flex items-center gap-5">
                           <div className="relative">
                             <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-bold text-white btn-accent select-none">
@@ -324,7 +494,6 @@ export default function Configuracoes() {
                         <ErrorBanner message={profileApiError} />
 
                         <div className="space-y-4">
-                          {/* Nome */}
                           <Field label="Nome completo" required error={profileErrors.nome}>
                             <InputWithIcon icon={<User size={14} />}
                               value={profile.nome}
@@ -334,7 +503,6 @@ export default function Configuracoes() {
                             />
                           </Field>
 
-                          {/* CPF (read-only) */}
                           <div className="space-y-1.5">
                             <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
                               CPF
@@ -350,7 +518,6 @@ export default function Configuracoes() {
                             <p className="text-xs text-gray-400">Identificador único. Entre em contato com o suporte para alterações.</p>
                           </div>
 
-                          {/* Email */}
                           <Field label="E-mail" required error={profileErrors.email} hint="Usado para login e notificações. Deve ser único.">
                             <InputWithIcon icon={<Mail size={14} />}
                               type="email"
@@ -376,7 +543,6 @@ export default function Configuracoes() {
                 {/* ── APARÊNCIA ──────────────────────────────────────────── */}
                 {activeTab === "aparencia" && (
                   <div className="space-y-4">
-                    {/* Tema */}
                     <Card className="space-y-4">
                       <h3 className="text-base font-semibold">Tema</h3>
                       <div className="grid grid-cols-2 gap-3">
@@ -404,7 +570,6 @@ export default function Configuracoes() {
                       </div>
                     </Card>
 
-                    {/* Cor de destaque */}
                     <Card className="space-y-4">
                       <div>
                         <h3 className="text-base font-semibold">Cor de Destaque</h3>
@@ -436,7 +601,6 @@ export default function Configuracoes() {
                       </div>
                     </Card>
 
-                    {/* Densidade */}
                     <Card className="space-y-4">
                       <div>
                         <h3 className="text-base font-semibold">Densidade da Interface</h3>
@@ -459,7 +623,6 @@ export default function Configuracoes() {
                 {activeTab === "notificacoes" && (
                   <Card className="space-y-6">
                     <h3 className="text-base font-semibold">Notificações</h3>
-
                     <NotifGroup label="Canais">
                       {NOTIFICATION_CHANNELS.map(({ key, label, desc, icon: Icon }) => (
                         <NotifRow key={key} label={label} desc={desc}
@@ -468,9 +631,7 @@ export default function Configuracoes() {
                           onChange={v => setNotifications(n => ({ ...n, [key]: v }))} />
                       ))}
                     </NotifGroup>
-
                     <hr className="border-gray-100 dark:border-white/5" />
-
                     <NotifGroup label="Eventos">
                       {NOTIFICATION_EVENTS.map(({ key, label, desc }) => (
                         <NotifRow key={key} label={label} desc={desc}
@@ -478,7 +639,6 @@ export default function Configuracoes() {
                           onChange={v => setNotifications(n => ({ ...n, [key]: v }))} />
                       ))}
                     </NotifGroup>
-
                     <div className="flex justify-end">
                       <SaveButton onSave={() => flash(setNotifSaved)} saved={notifSaved} />
                     </div>
@@ -498,9 +658,9 @@ export default function Configuracoes() {
 
                       <div className="space-y-3">
                         {[
-                          { key: "current", label: "Senha atual",          placeholder: "••••••••",            forceHidden: true  },
-                          { key: "newPass", label: "Nova senha",            placeholder: "Mínimo 6 caracteres", forceHidden: false },
-                          { key: "confirm", label: "Confirmar nova senha",  placeholder: "Repita a nova senha",  forceHidden: false },
+                          { key: "current", label: "Senha atual",         placeholder: "••••••••",            forceHidden: true  },
+                          { key: "newPass", label: "Nova senha",           placeholder: "Mínimo 6 caracteres", forceHidden: false },
+                          { key: "confirm", label: "Confirmar nova senha", placeholder: "Repita a nova senha",  forceHidden: false },
                         ].map(({ key, label, placeholder, forceHidden }) => {
                           const type = forceHidden || !showPassword ? "password" : "text";
                           const confirmMatch = key === "confirm" && passwords.confirm && passwords.confirm === passwords.newPass;
@@ -576,6 +736,36 @@ export default function Configuracoes() {
                         </div>
                       ))}
                     </Card>
+
+                    {/* Zona de perigo */}
+                    <div className="rounded-2xl border-2 border-red-200 dark:border-red-500/20 overflow-hidden">
+                      <div className="px-6 py-4 bg-red-50 dark:bg-red-500/5 border-b border-red-200 dark:border-red-500/20">
+                        <p className="text-sm font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
+                          <TriangleAlert size={15} />
+                          Zona de Perigo
+                        </p>
+                      </div>
+                      <div className="px-6 py-5 bg-white dark:bg-white/[0.01] flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-800 dark:text-white">Excluir minha conta</p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Remove permanentemente sua conta e todos os dados associados.
+                          </p>
+                          {deleteApiError && (
+                            <p className="flex items-center gap-1 text-xs text-red-500 mt-1.5">
+                              <AlertCircle size={11} /> {deleteApiError}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => setShowDeleteModal(true)}
+                          className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-200 dark:border-red-500/30 transition-all duration-200"
+                        >
+                          <Trash2 size={15} />
+                          Excluir conta
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -585,10 +775,10 @@ export default function Configuracoes() {
                     <h3 className="text-base font-semibold">Preferências Regionais</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {[
-                        { label: "Idioma",          value: language, onChange: setLanguage, options: [["pt-BR","Português (Brasil)"],["en-US","English (US)"],["es","Español"]] },
-                        { label: "Moeda",            value: currency, onChange: setCurrency, options: [["BRL","BRL — Real Brasileiro (R$)"],["USD","USD — Dólar Americano ($)"],["EUR","EUR — Euro (€)"]] },
-                        { label: "Fuso Horário",     value: "ftz",    onChange: () => {},    options: [["ftz","América/Fortaleza (UTC-3)"],["stz","América/São_Paulo (UTC-3)"],["mtz","América/Manaus (UTC-4)"]] },
-                        { label: "Formato de Data",  value: "dmy",    onChange: () => {},    options: [["dmy","DD/MM/AAAA"],["mdy","MM/DD/AAAA"],["ymd","AAAA-MM-DD"]] },
+                        { label: "Idioma",         value: language, onChange: setLanguage, options: [["pt-BR","Português (Brasil)"],["en-US","English (US)"],["es","Español"]] },
+                        { label: "Moeda",           value: currency, onChange: setCurrency, options: [["BRL","BRL — Real Brasileiro (R$)"],["USD","USD — Dólar Americano ($)"],["EUR","EUR — Euro (€)"]] },
+                        { label: "Fuso Horário",    value: "ftz",    onChange: () => {},    options: [["ftz","América/Fortaleza (UTC-3)"],["stz","América/São_Paulo (UTC-3)"],["mtz","América/Manaus (UTC-4)"]] },
+                        { label: "Formato de Data", value: "dmy",    onChange: () => {},    options: [["dmy","DD/MM/AAAA"],["mdy","MM/DD/AAAA"],["ymd","AAAA-MM-DD"]] },
                       ].map(({ label, value, onChange, options }) => (
                         <div key={label} className="space-y-1.5">
                           <label className="text-xs font-semibold uppercase tracking-wider text-gray-400">{label}</label>

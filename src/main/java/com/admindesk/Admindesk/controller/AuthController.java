@@ -29,11 +29,14 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequest request) {
-        // Tenta autenticar — lança exceção se senha/email errado
-        authManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        try {
+            authManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body("Email ou senha incorretos.");
+        }
         String token = jwtUtil.gerarToken(request.getEmail());
         return ResponseEntity.ok(token);
     }
