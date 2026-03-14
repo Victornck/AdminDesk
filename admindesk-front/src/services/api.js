@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://admindesk-8oea.onrender.com'
+  baseURL: 'https://admindesk-8oea.onrender.com'
 });
 
 api.interceptors.request.use(config => {
