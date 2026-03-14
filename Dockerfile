@@ -3,10 +3,10 @@ FROM node:20-alpine AS frontend-build
 WORKDIR /app/admindesk-front
 
 COPY admindesk-front/package.json admindesk-front/package-lock.json ./
-RUN npm ci
+RUN npm install
 
 COPY admindesk-front/ .
-RUN npm run build
+RUN npx vite build
 
 
 # ---------- Build do Backend ----------
