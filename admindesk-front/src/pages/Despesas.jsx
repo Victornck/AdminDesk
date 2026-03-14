@@ -42,7 +42,7 @@ function ModalField({ label, icon: Icon, children }) {
         {label}
       </label>
       <div style={{
-        display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12,
+        display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 12,
         transition: "all 0.15s", background: "var(--bg-input)",
         border: focused ? "1px solid var(--accent)" : "1px solid var(--bd-input)",
         boxShadow: focused ? "0 0 0 3px var(--accent-ring)" : "none",
@@ -81,22 +81,28 @@ function DespesaModal({ open, onClose, onSave, inicial }) {
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 backdrop-blur-md"
         style={{ background: "rgba(0,0,0,0.50)" }} onClick={onClose} />
 
-      <div className="relative w-full max-w-md rounded-2xl p-6 shadow-2xl"
+      <div className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-5 md:p-6 shadow-2xl
+        max-h-[92vh] overflow-y-auto"
         style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}
         onKeyDown={blockEnter}>
 
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-px"
+        {/* Handle bar mobile */}
+        <div className="flex justify-center mb-4 sm:hidden">
+          <div className="w-10 h-1 rounded-full" style={{ background: "var(--bd-div)" }} />
+        </div>
+
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-px hidden sm:block"
           style={{ background: "linear-gradient(90deg,transparent,rgba(239,68,68,0.65),transparent)" }} />
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg flex items-center justify-center"
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
               style={{ background: "var(--color-danger-muted)" }}>
-              <TrendingDown size={12} style={{ color: "var(--color-danger)" }} />
+              <TrendingDown size={13} style={{ color: "var(--color-danger)" }} />
             </div>
             <div>
               <h2 className="text-sm font-semibold" style={{ color: "var(--tx-primary)" }}>
@@ -105,15 +111,13 @@ function DespesaModal({ open, onClose, onSave, inicial }) {
               <p className="text-[11px]" style={{ color: "var(--tx-muted)" }}>Preencha os dados abaixo</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ border: "1px solid var(--bd-card)" }}
-            onMouseEnter={e => e.currentTarget.style.background = "var(--bg-subtle)"}
-            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ border: "1px solid var(--bd-card)" }}>
             <X size={14} style={{ color: "var(--tx-muted)" }} />
           </button>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3.5">
           <ModalField label="Descrição *" icon={FileText}>
             <input type="text" name="descriptor" value={form.descriptor} onChange={handle}
               placeholder="Ex: Aluguel, Mercado, Gasolina…" autoComplete="off"
@@ -121,26 +125,29 @@ function DespesaModal({ open, onClose, onSave, inicial }) {
               style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
           </ModalField>
 
-          <ModalField label="Valor *">
-            <span className="text-xs shrink-0" style={{ color: "var(--tx-muted)" }}>R$</span>
-            <input type="number" name="price" min="0" step="0.01"
-              value={form.price} onChange={handle} placeholder="0,00"
-              className="bg-transparent text-sm outline-none w-full"
-              style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
-          </ModalField>
+          <div className="grid grid-cols-2 gap-3">
+            <ModalField label="Valor *">
+              <span className="text-xs shrink-0" style={{ color: "var(--tx-muted)" }}>R$</span>
+              <input type="number" name="price" min="0" step="0.01"
+                value={form.price} onChange={handle} placeholder="0,00"
+                className="bg-transparent text-sm outline-none w-full"
+                style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
+            </ModalField>
 
-          <ModalField label="Data *" icon={Calendar}>
-            <input type="date" name="data" value={form.data} onChange={handle}
-              className="bg-transparent text-sm outline-none w-full"
-              style={{ color: "var(--tx-primary)", caretColor: "var(--accent)",
-                colorScheme: document.documentElement.classList.contains("dark") ? "dark" : "light" }} />
-          </ModalField>
+            <ModalField label="Data *" icon={Calendar}>
+              <input type="date" name="data" value={form.data} onChange={handle}
+                className="bg-transparent text-sm outline-none w-full"
+                style={{ color: "var(--tx-primary)", caretColor: "var(--accent)",
+                  colorScheme: document.documentElement.classList.contains("dark") ? "dark" : "light" }} />
+            </ModalField>
+          </div>
 
+          {/* Categoria */}
           <div className="flex flex-col gap-1.5 relative">
             <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
               textTransform: "uppercase", color: "var(--tx-muted)" }}>Categoria</label>
             <button onClick={() => setCatOpen(o => !o)}
-              className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl w-full transition-all"
+              className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl w-full"
               style={{ background: "var(--bg-input)",
                 border: catOpen ? "1px solid var(--accent)" : "1px solid var(--bd-input)" }}>
               <Tag size={14} style={{ color: cat.color, flexShrink: 0 }} />
@@ -154,7 +161,7 @@ function DespesaModal({ open, onClose, onSave, inicial }) {
                 {CATEGORIAS.map(c => (
                   <button key={c.key}
                     onClick={() => { setForm(f => ({ ...f, categoria: c.key })); setCatOpen(false); }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-left transition-colors"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-3 text-sm text-left transition-colors"
                     style={{ color: "var(--tx-primary)" }}
                     onMouseEnter={e => e.currentTarget.style.background = "var(--bg-hover)"}
                     onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
@@ -170,14 +177,14 @@ function DespesaModal({ open, onClose, onSave, inicial }) {
           </div>
         </div>
 
-        <div className="flex gap-3 mt-6">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm"
+        <div className="flex gap-3 mt-5">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl text-sm font-medium"
             style={{ color: "var(--tx-muted)", border: "1px solid var(--bd-card)" }}>
             Cancelar
           </button>
           <button onClick={submit}
             disabled={saving || !form.descriptor.trim() || !form.price || !form.data}
-            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all disabled:opacity-40 hover:brightness-110"
+            className="flex-1 py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all disabled:opacity-40"
             style={{ background: "var(--color-danger)" }}>
             {saving
               ? <><span className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Salvando…</>
@@ -194,11 +201,14 @@ function DespesaModal({ open, onClose, onSave, inicial }) {
 function DeleteModal({ open, item, onConfirm, onClose }) {
   if (!open || !item) return null;
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 backdrop-blur-md"
         style={{ background: "rgba(0,0,0,0.50)" }} onClick={onClose} />
-      <div className="relative w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+      <div className="relative w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl p-5 md:p-6 shadow-2xl"
         style={{ background: "var(--bg-card)", border: "1px solid var(--color-danger-ring)" }}>
+        <div className="flex justify-center mb-4 sm:hidden">
+          <div className="w-10 h-1 rounded-full" style={{ background: "var(--bd-div)" }} />
+        </div>
         <div className="flex flex-col items-center gap-4 text-center">
           <div className="w-11 h-11 rounded-xl flex items-center justify-center"
             style={{ background: "var(--color-danger-muted)", border: "1px solid var(--color-danger-ring)" }}>
@@ -214,12 +224,12 @@ function DeleteModal({ open, item, onConfirm, onClose }) {
           </div>
         </div>
         <div className="flex gap-3 mt-6">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm"
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl text-sm font-medium"
             style={{ color: "var(--tx-muted)", border: "1px solid var(--bd-card)" }}>
             Cancelar
           </button>
           <button onClick={onConfirm}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white hover:brightness-110 transition-all"
+            className="flex-1 py-3 rounded-xl text-sm font-semibold text-white"
             style={{ background: "var(--color-danger)" }}>
             Remover
           </button>
@@ -234,16 +244,13 @@ function DeleteModal({ open, item, onConfirm, onClose }) {
 export default function Despesas() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-
   const [spents,     setSpents]     = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [liveStatus, setLiveStatus] = useState("ok");
-
   const [search,          setSearch]          = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("all");
   const [viewMode,        setViewMode]        = useState("list");
-
   const [modalOpen, setModalOpen] = useState(false);
   const [editando,  setEditando]  = useState(null);
   const [deletando, setDeletando] = useState(null);
@@ -324,31 +331,26 @@ export default function Despesas() {
       <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
 
       <main className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-0">
-
         <PageHeader
           title="Despesas"
           subtitle={`${spents.length} ${spents.length === 1 ? "lançamento" : "lançamentos"}`}
-          initials="JS"
           onMenuClick={() => setMobileOpen(true)}
           live={{ status: liveStatus, lastUpdate }}
         />
 
-        <div className="p-4 md:p-8 flex flex-col gap-5">
-          <div className="flex items-end justify-between">
+        <div className="p-4 md:p-8 flex flex-col gap-4 md:gap-5">
+          <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-widest mb-0.5"
                 style={{ color: "var(--tx-muted)" }}>Financeiro</p>
-              <h1 className="text-xl font-bold tracking-tight" style={{ color: "var(--tx-primary)" }}>
-                Controle de Despesas
-              </h1>
+              <h1 className="text-lg md:text-xl font-bold tracking-tight"
+                style={{ color: "var(--tx-primary)" }}>Controle de Despesas</h1>
             </div>
             <button onClick={() => fetchSpents(true)}
-              className="hidden md:flex items-center gap-1.5 text-xs"
-              style={{ color: "var(--tx-muted)" }}
-              onMouseEnter={e => e.currentTarget.style.color = "var(--tx-primary)"}
-              onMouseLeave={e => e.currentTarget.style.color = "var(--tx-muted)"}>
+              className="flex items-center gap-1.5 text-xs py-2 px-3 rounded-lg"
+              style={{ color: "var(--tx-muted)", border: "1px solid var(--bd-div)" }}>
               <RefreshCw size={11} className={liveStatus === "syncing" ? "animate-spin" : ""} />
-              Atualizar
+              <span className="hidden sm:inline">Atualizar</span>
             </button>
           </div>
 
@@ -359,11 +361,12 @@ export default function Despesas() {
             </div>
           ) : (
             <>
-              {/* KPI Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden col-span-2 transition-transform hover:-translate-y-0.5"
+              {/* KPI Cards — 1 col mobile, 2+2 desktop */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                {/* Total — ocupa tudo no mobile, 2 cols no md */}
+                <div className="relative rounded-2xl p-4 md:p-5 flex flex-col gap-2 overflow-hidden sm:col-span-2"
                   style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
-                  <div className="absolute top-0 right-0 w-36 h-36 rounded-full pointer-events-none"
+                  <div className="absolute top-0 right-0 w-32 h-32 rounded-full pointer-events-none"
                     style={{ background: "var(--color-danger)", opacity: 0.06, filter: "blur(32px)", transform: "translate(30%,-30%)" }} />
                   <div className="flex items-center justify-between">
                     <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
@@ -373,14 +376,14 @@ export default function Despesas() {
                       <TrendingDown size={13} style={{ color: "var(--color-danger)" }} />
                     </div>
                   </div>
-                  <p className="text-[28px] font-bold tracking-tight leading-none"
+                  <p className="text-2xl md:text-[28px] font-bold tracking-tight leading-none"
                     style={{ color: "var(--color-danger)" }}>{fmt(totalGeral)}</p>
                   <p className="text-[11px]" style={{ color: "var(--tx-muted)" }}>
                     {spents.length} despesa{spents.length !== 1 ? "s" : ""} registrada{spents.length !== 1 ? "s" : ""}
                   </p>
                 </div>
 
-                <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden transition-transform hover:-translate-y-0.5"
+                <div className="relative rounded-2xl p-4 flex flex-col gap-2"
                   style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
                   <div className="flex items-center justify-between">
                     <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
@@ -390,7 +393,7 @@ export default function Despesas() {
                       <Tag size={13} style={{ color: maiorCategoria?.color ?? "#94a3b8" }} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold tracking-tight leading-none"
+                  <p className="text-lg font-bold tracking-tight leading-none"
                     style={{ color: maiorCategoria?.color ?? "var(--tx-sub)" }}>
                     {maiorCategoria ? fmt(maiorCategoria.total) : "—"}
                   </p>
@@ -399,7 +402,7 @@ export default function Despesas() {
                   </p>
                 </div>
 
-                <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden transition-transform hover:-translate-y-0.5"
+                <div className="relative rounded-2xl p-4 flex flex-col gap-2"
                   style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
                   <div className="flex items-center justify-between">
                     <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
@@ -409,7 +412,7 @@ export default function Despesas() {
                       <Wallet size={13} style={{ color: "#a78bfa" }} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold tracking-tight leading-none" style={{ color: "#a78bfa" }}>
+                  <p className="text-lg font-bold tracking-tight leading-none" style={{ color: "#a78bfa" }}>
                     {spents.length > 0 ? fmt(totalGeral / spents.length) : "—"}
                   </p>
                   <p className="text-[11px]" style={{ color: "var(--tx-muted)" }}>por lançamento</p>
@@ -418,10 +421,10 @@ export default function Despesas() {
 
               {/* Distribuição por categoria */}
               {totalPorCategoria.length > 0 && (
-                <div className="rounded-2xl p-5"
+                <div className="rounded-2xl p-4 md:p-5"
                   style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
                   <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
-                    textTransform: "uppercase", color: "var(--tx-muted)", marginBottom: 16 }}>
+                    textTransform: "uppercase", color: "var(--tx-muted)", marginBottom: 14 }}>
                     Distribuição por categoria
                   </p>
                   <div className="flex flex-col gap-3">
@@ -429,15 +432,13 @@ export default function Despesas() {
                       const pct = totalGeral > 0 ? (c.total / totalGeral) * 100 : 0;
                       return (
                         <div key={c.key} className="flex items-center gap-3">
-                          <span className="text-xs w-24 shrink-0 truncate" style={{ color: "var(--tx-sub)" }}>{c.label}</span>
+                          <span className="text-xs w-20 shrink-0 truncate" style={{ color: "var(--tx-sub)" }}>{c.label}</span>
                           <div className="flex-1 rounded-full overflow-hidden" style={{ height: 6, background: "var(--bg-subtle)" }}>
                             <div className="h-full rounded-full transition-all duration-700"
                               style={{ width: `${pct}%`, background: c.color }} />
                           </div>
-                          <span className="text-xs w-20 text-right shrink-0 font-mono"
+                          <span className="text-xs w-16 text-right shrink-0 font-mono tabular-nums"
                             style={{ color: "var(--tx-sub)" }}>{fmt(c.total)}</span>
-                          <span className="text-[11px] w-8 text-right shrink-0"
-                            style={{ color: "var(--tx-muted)" }}>{pct.toFixed(0)}%</span>
                         </div>
                       );
                     })}
@@ -446,43 +447,43 @@ export default function Despesas() {
               )}
 
               {/* Toolbar */}
-              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-                <div className="flex flex-wrap gap-2 items-center">
-                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
-                    style={{ background: "var(--bg-input)", border: "1px solid var(--bd-input)", minWidth: 200 }}>
-                    <Search size={13} style={{ color: "var(--tx-muted)", flexShrink: 0 }} />
-                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                      placeholder="Buscar descrição…"
-                      className="bg-transparent outline-none w-full text-sm"
-                      style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
-                    {search && (
-                      <button onClick={() => setSearch("")} style={{ color: "var(--tx-muted)" }}>
-                        <X size={12} />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1 p-1 rounded-xl"
-                    style={{ background: "var(--bg-subtle)", border: "1px solid var(--bd-div)" }}>
-                    <FilterBtn active={filtroCategoria === "all"} onClick={() => setFiltroCategoria("all")}>
-                      Todas
-                    </FilterBtn>
-                    {totalPorCategoria.map(c => (
-                      <FilterBtn key={c.key} active={filtroCategoria === c.key}
-                        onClick={() => setFiltroCategoria(c.key)} color={c.color}>
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
-                        {c.label}
-                      </FilterBtn>
-                    ))}
-                  </div>
+              <div className="flex flex-col gap-3">
+                {/* Busca */}
+                <div className="flex items-center gap-2 px-3 py-3 rounded-xl"
+                  style={{ background: "var(--bg-input)", border: "1px solid var(--bd-input)" }}>
+                  <Search size={13} style={{ color: "var(--tx-muted)", flexShrink: 0 }} />
+                  <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                    placeholder="Buscar descrição…"
+                    className="bg-transparent outline-none w-full text-sm"
+                    style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
+                  {search && (
+                    <button onClick={() => setSearch("")} style={{ color: "var(--tx-muted)" }}>
+                      <X size={12} />
+                    </button>
+                  )}
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="flex items-center p-1 rounded-xl gap-1"
+                {/* Filtros de categoria — scroll horizontal no mobile */}
+                <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none">
+                  <FilterBtn active={filtroCategoria === "all"} onClick={() => setFiltroCategoria("all")}>
+                    Todas
+                  </FilterBtn>
+                  {totalPorCategoria.map(c => (
+                    <FilterBtn key={c.key} active={filtroCategoria === c.key}
+                      onClick={() => setFiltroCategoria(c.key)} color={c.color}>
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: c.color }} />
+                      {c.label}
+                    </FilterBtn>
+                  ))}
+                </div>
+
+                {/* Botões de ação */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="hidden sm:flex items-center p-1 rounded-xl gap-1"
                     style={{ background: "var(--bg-subtle)", border: "1px solid var(--bd-div)" }}>
                     {[{ key: "list", Icon: List }, { key: "grid", Icon: LayoutGrid }].map(({ key, Icon }) => (
                       <button key={key} onClick={() => setViewMode(key)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
                         style={viewMode === key
                           ? { background: "var(--accent-muted)", color: "var(--accent)" }
                           : { color: "var(--tx-muted)" }}>
@@ -492,7 +493,7 @@ export default function Despesas() {
                   </div>
 
                   <button onClick={() => { setEditando(null); setModalOpen(true); }}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold text-white"
                     style={{ background: "var(--color-danger)", boxShadow: "0 0 20px var(--color-danger-muted)" }}>
                     <Plus size={15} /> Nova Despesa
                   </button>
@@ -501,7 +502,7 @@ export default function Despesas() {
 
               {/* Lista vazia */}
               {filtrados.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
+                <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
                   <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
                     style={{ background: "var(--color-danger-muted)", border: "1px solid var(--color-danger-ring)" }}>
                     <TrendingDown size={24} style={{ color: "var(--color-danger)" }} />
@@ -518,113 +519,118 @@ export default function Despesas() {
                   </div>
                   {!search && (
                     <button onClick={() => { setEditando(null); setModalOpen(true); }}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:brightness-110 transition-all"
+                      className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold text-white"
                       style={{ background: "var(--color-danger)" }}>
                       <Plus size={14} /> Registrar despesa
                     </button>
                   )}
                 </div>
 
-              ) : viewMode === "list" ? (
-                <div className="rounded-2xl overflow-hidden"
-                  style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
-                  <div className="grid px-5 py-3 items-center"
-                    style={{ gridTemplateColumns: "1fr 110px 100px 110px 56px",
-                      borderBottom: "1px solid var(--bd-div)" }}>
-                    {["Descrição", "Data", "Categoria", "Valor", ""].map(h => (
-                      <span key={h} style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
-                        textTransform: "uppercase", color: "var(--tx-muted)" }}>{h}</span>
-                    ))}
-                  </div>
-                  {filtrados.map((s, i) => {
-                    const cat = catInfo(s.categoria);
-                    return (
-                      <div key={s.id} className="grid px-5 py-3.5 items-center group cursor-default transition-colors"
-                        style={{ gridTemplateColumns: "1fr 110px 100px 110px 56px",
-                          borderBottom: i < filtrados.length - 1 ? "1px solid var(--bd-div)" : "none" }}
-                        onMouseEnter={e => e.currentTarget.style.background = "var(--bg-hover)"}
-                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                            style={{ background: `${cat.color}18` }}>
-                            <TrendingDown size={13} style={{ color: cat.color }} />
-                          </div>
-                          <p className="text-sm font-medium truncate" style={{ color: "var(--tx-primary)" }}>{s.descriptor}</p>
-                        </div>
-                        <span className="text-xs font-mono" style={{ color: "var(--tx-sub)" }}>{fmtDate(s.data)}</span>
-                        <span className="text-[11px] font-semibold px-2 py-1 rounded-lg inline-flex items-center gap-1 w-fit"
-                          style={{ background: `${cat.color}15`, color: cat.color, border: `1px solid ${cat.color}30` }}>
-                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: cat.color }} />
-                          {cat.label}
-                        </span>
-                        <span className="text-sm font-bold tabular-nums" style={{ color: "var(--color-danger)" }}>
-                          −{fmt(s.price)}
-                        </span>
-                        <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                          {[
-                            { action: () => { setEditando(s); setModalOpen(true); }, Icon: Pencil, hoverBd: "var(--accent-ring)" },
-                            { action: () => setDeletando(s), Icon: Trash2, hoverBd: "var(--color-danger-ring)" },
-                          ].map(({ action, Icon, hoverBd }, idx) => (
-                            <button key={idx} onClick={action}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-                              style={{ border: "1px solid var(--bd-div)", background: "transparent" }}
-                              onMouseEnter={e => e.currentTarget.style.borderColor = hoverBd}
-                              onMouseLeave={e => e.currentTarget.style.borderColor = "var(--bd-div)"}>
-                              <Icon size={11} style={{ color: "var(--tx-sub)" }} />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {filtrados.map(s => {
-                    const cat = catInfo(s.categoria);
-                    return (
-                      <div key={s.id} className="relative rounded-2xl p-4 flex flex-col gap-3 overflow-hidden group transition-transform hover:-translate-y-0.5"
-                        style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
-                        <div className="absolute top-0 right-0 w-24 h-24 rounded-full pointer-events-none"
-                          style={{ background: cat.color, opacity: 0.06, filter: "blur(24px)", transform: "translate(30%,-30%)" }} />
-                        <div className="flex items-start justify-between">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                            style={{ background: `${cat.color}18` }}>
-                            <TrendingDown size={13} style={{ color: cat.color }} />
-                          </div>
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {[
-                              { action: () => { setEditando(s); setModalOpen(true); }, Icon: Pencil, hoverBd: "var(--accent-ring)" },
-                              { action: () => setDeletando(s), Icon: Trash2, hoverBd: "var(--color-danger-ring)" },
-                            ].map(({ action, Icon, hoverBd }, idx) => (
-                              <button key={idx} onClick={action}
-                                className="w-6 h-6 rounded-lg flex items-center justify-center transition-all"
-                                style={{ border: "1px solid var(--bd-div)", background: "transparent" }}
-                                onMouseEnter={e => e.currentTarget.style.borderColor = hoverBd}
-                                onMouseLeave={e => e.currentTarget.style.borderColor = "var(--bd-div)"}>
-                                <Icon size={10} style={{ color: "var(--tx-sub)" }} />
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium truncate" style={{ color: "var(--tx-primary)" }}>{s.descriptor}</p>
-                          <p className="text-[11px] mt-0.5" style={{ color: "var(--tx-muted)" }}>{fmtDate(s.data)}</p>
-                        </div>
-                        <div className="flex items-center justify-between mt-auto">
-                          <span className="text-[11px] font-semibold px-2 py-1 rounded-lg inline-flex items-center gap-1"
-                            style={{ background: `${cat.color}15`, color: cat.color, border: `1px solid ${cat.color}30` }}>
-                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: cat.color }} />
-                            {cat.label}
-                          </span>
-                          <span className="text-sm font-bold tabular-nums" style={{ color: "var(--color-danger)" }}>
-                            −{fmt(s.price)}
-                          </span>
-                        </div>
+                // Mobile sempre cards, desktop respeita viewMode
+                <div>
+                  {/* Desktop list */}
+                  {viewMode === "list" && (
+                    <div className="hidden sm:block rounded-2xl overflow-hidden"
+                      style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
+                      <div className="grid px-5 py-3 items-center"
+                        style={{ gridTemplateColumns: "1fr 110px 100px 110px 56px",
+                          borderBottom: "1px solid var(--bd-div)" }}>
+                        {["Descrição", "Data", "Categoria", "Valor", ""].map(h => (
+                          <span key={h} style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+                            textTransform: "uppercase", color: "var(--tx-muted)" }}>{h}</span>
+                        ))}
                       </div>
-                    );
-                  })}
+                      {filtrados.map((s, i) => {
+                        const cat = catInfo(s.categoria);
+                        return (
+                          <div key={s.id} className="grid px-5 py-3.5 items-center group cursor-default transition-colors"
+                            style={{ gridTemplateColumns: "1fr 110px 100px 110px 56px",
+                              borderBottom: i < filtrados.length - 1 ? "1px solid var(--bd-div)" : "none" }}
+                            onMouseEnter={e => e.currentTarget.style.background = "var(--bg-hover)"}
+                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                                style={{ background: `${cat.color}18` }}>
+                                <TrendingDown size={13} style={{ color: cat.color }} />
+                              </div>
+                              <p className="text-sm font-medium truncate" style={{ color: "var(--tx-primary)" }}>{s.descriptor}</p>
+                            </div>
+                            <span className="text-xs font-mono" style={{ color: "var(--tx-sub)" }}>{fmtDate(s.data)}</span>
+                            <span className="text-[11px] font-semibold px-2 py-1 rounded-lg inline-flex items-center gap-1 w-fit"
+                              style={{ background: `${cat.color}15`, color: cat.color, border: `1px solid ${cat.color}30` }}>
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ background: cat.color }} />
+                              {cat.label}
+                            </span>
+                            <span className="text-sm font-bold tabular-nums" style={{ color: "var(--color-danger)" }}>
+                              −{fmt(s.price)}
+                            </span>
+                            <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                              {[
+                                { action: () => { setEditando(s); setModalOpen(true); }, Icon: Pencil, hoverBd: "var(--accent-ring)" },
+                                { action: () => setDeletando(s), Icon: Trash2, hoverBd: "var(--color-danger-ring)" },
+                              ].map(({ action, Icon, hoverBd }, idx) => (
+                                <button key={idx} onClick={action}
+                                  className="w-7 h-7 rounded-lg flex items-center justify-center"
+                                  style={{ border: "1px solid var(--bd-div)" }}
+                                  onMouseEnter={e => e.currentTarget.style.borderColor = hoverBd}
+                                  onMouseLeave={e => e.currentTarget.style.borderColor = "var(--bd-div)"}>
+                                  <Icon size={11} style={{ color: "var(--tx-sub)" }} />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Cards — mobile sempre, desktop só no grid mode */}
+                  <div className={`grid gap-3 ${viewMode === "grid" ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:hidden"} grid-cols-1`}>
+                    {filtrados.map(s => {
+                      const cat = catInfo(s.categoria);
+                      return (
+                        <div key={s.id} className="relative rounded-2xl p-4 flex flex-col gap-3 overflow-hidden"
+                          style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                                style={{ background: `${cat.color}18` }}>
+                                <TrendingDown size={14} style={{ color: cat.color }} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate" style={{ color: "var(--tx-primary)" }}>{s.descriptor}</p>
+                                <p className="text-[11px]" style={{ color: "var(--tx-muted)" }}>{fmtDate(s.data)}</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-1 shrink-0 ml-2">
+                              {[
+                                { action: () => { setEditando(s); setModalOpen(true); }, Icon: Pencil },
+                                { action: () => setDeletando(s), Icon: Trash2 },
+                              ].map(({ action, Icon }, idx) => (
+                                <button key={idx} onClick={action}
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                                  style={{ border: "1px solid var(--bd-div)" }}>
+                                  <Icon size={12} style={{ color: "var(--tx-sub)" }} />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between mt-auto pt-2"
+                            style={{ borderTop: "1px solid var(--bd-div)" }}>
+                            <span className="text-[11px] font-semibold px-2 py-1 rounded-lg inline-flex items-center gap-1"
+                              style={{ background: `${cat.color}15`, color: cat.color, border: `1px solid ${cat.color}30` }}>
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ background: cat.color }} />
+                              {cat.label}
+                            </span>
+                            <span className="text-sm font-bold tabular-nums" style={{ color: "var(--color-danger)" }}>
+                              −{fmt(s.price)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </>
@@ -641,11 +647,10 @@ export default function Despesas() {
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function FilterBtn({ active, onClick, color, children }) {
   return (
     <button onClick={onClick}
-      className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
+      className="px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0"
       style={active
         ? color
           ? { background: `${color}18`, color, border: `1px solid ${color}35` }

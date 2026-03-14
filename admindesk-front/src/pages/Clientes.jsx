@@ -30,7 +30,7 @@ function ModalField({ label, icon: Icon, children }) {
         {label}
       </label>
       <div style={{
-        display: "flex", alignItems: "center", gap: 10, padding: "12px 14px",
+        display: "flex", alignItems: "center", gap: 10, padding: "13px 14px",
         borderRadius: 12, transition: "all 0.15s", background: "var(--bg-input)",
         border: focused ? "1px solid var(--accent)" : "1px solid var(--bd-input)",
         boxShadow: focused ? "0 0 0 3px var(--accent-ring)" : "none",
@@ -72,20 +72,29 @@ function ClienteModal({ open, onClose, onSave, inicial }) {
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 backdrop-blur-md"
         style={{ background: "rgba(0,0,0,0.50)" }} onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl p-6 shadow-2xl"
+
+      {/* Bottom sheet no mobile, modal centralizado no desktop */}
+      <div className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-5 md:p-6 shadow-2xl
+        max-h-[92vh] overflow-y-auto"
         style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}
         onKeyDown={blockEnter}>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-px"
+
+        {/* Handle bar — só mobile */}
+        <div className="flex justify-center mb-4 sm:hidden">
+          <div className="w-10 h-1 rounded-full" style={{ background: "var(--bd-div)" }} />
+        </div>
+
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-px hidden sm:block"
           style={{ background: "linear-gradient(90deg,transparent,var(--accent),transparent)", opacity: 0.65 }} />
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg flex items-center justify-center"
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
               style={{ background: "var(--accent-muted)" }}>
-              <TrendingUp size={12} style={{ color: "var(--accent)" }} />
+              <TrendingUp size={13} style={{ color: "var(--accent)" }} />
             </div>
             <div>
               <h2 className="text-sm font-semibold" style={{ color: "var(--tx-primary)" }}>
@@ -96,15 +105,13 @@ function ClienteModal({ open, onClose, onSave, inicial }) {
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ border: "1px solid var(--bd-card)" }}
-            onMouseEnter={e => e.currentTarget.style.background = "var(--bg-subtle)"}
-            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ border: "1px solid var(--bd-card)" }}>
             <X size={14} style={{ color: "var(--tx-muted)" }} />
           </button>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3.5">
           <ModalField label="Nome *" icon={Users}>
             <input type="text" name="name" value={form.name} onChange={handle}
               placeholder="Nome completo ou empresa…" autoComplete="off"
@@ -117,21 +124,19 @@ function ClienteModal({ open, onClose, onSave, inicial }) {
               className="bg-transparent text-sm outline-none w-full"
               style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
           </ModalField>
-          <div className="grid grid-cols-2 gap-3">
-            <ModalField label="Telefone" icon={Phone}>
-              <input type="text" name="phone" value={form.phone} onChange={handlePhone}
-                placeholder="(00) 00000-0000" maxLength={15}
-                className="bg-transparent text-sm outline-none w-full"
-                style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
-            </ModalField>
-            <ModalField label="Valor / mês *">
-              <span className="text-xs shrink-0" style={{ color: "var(--tx-muted)" }}>R$</span>
-              <input type="number" name="valueMonthly" min="0" step="0.01"
-                value={form.valueMonthly} onChange={handle} placeholder="0,00"
-                className="bg-transparent text-sm outline-none w-full"
-                style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
-            </ModalField>
-          </div>
+          <ModalField label="Telefone" icon={Phone}>
+            <input type="text" name="phone" value={form.phone} onChange={handlePhone}
+              placeholder="(00) 00000-0000" maxLength={15}
+              className="bg-transparent text-sm outline-none w-full"
+              style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
+          </ModalField>
+          <ModalField label="Valor / mês *">
+            <span className="text-xs shrink-0" style={{ color: "var(--tx-muted)" }}>R$</span>
+            <input type="number" name="valueMonthly" min="0" step="0.01"
+              value={form.valueMonthly} onChange={handle} placeholder="0,00"
+              className="bg-transparent text-sm outline-none w-full"
+              style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
+          </ModalField>
         </div>
 
         <div className="mt-4 px-3.5 py-2.5 rounded-xl flex items-center gap-2"
@@ -139,22 +144,21 @@ function ClienteModal({ open, onClose, onSave, inicial }) {
           <DollarSign size={12} style={{ color: "var(--accent)", flexShrink: 0 }} />
           <p className="text-[11px]" style={{ color: "var(--accent)" }}>
             {valorNum > 0
-              ? `+${fmt(valorNum)}/mês será adicionado ao lucro do dashboard`
-              : "Defina o valor mensal para impactar o dashboard financeiro"}
+              ? `+${fmt(valorNum)}/mês será adicionado ao lucro`
+              : "Defina o valor mensal para impactar o dashboard"}
           </p>
         </div>
 
         <div className="flex gap-3 mt-4">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm"
+          <button onClick={onClose}
+            className="flex-1 py-3 rounded-xl text-sm font-medium"
             style={{ color: "var(--tx-muted)", border: "1px solid var(--bd-card)" }}>
             Cancelar
           </button>
           <button onClick={submit}
             disabled={saving || !form.name.trim() || !form.email.trim()}
-            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all disabled:opacity-40"
-            style={{ background: "var(--accent)", boxShadow: "var(--accent-shadow-css)" }}
-            onMouseEnter={e => { if (!e.currentTarget.disabled) e.currentTarget.style.filter = "brightness(1.12)"; }}
-            onMouseLeave={e => e.currentTarget.style.filter = "none"}>
+            className="flex-1 py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+            style={{ background: "var(--accent)", boxShadow: "var(--accent-shadow-css)" }}>
             {saving
               ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Salvando…</>
               : <>{inicial?.id ? "Salvar" : "Cadastrar"} <ArrowRight size={13} /></>}
@@ -170,11 +174,14 @@ function ClienteModal({ open, onClose, onSave, inicial }) {
 function DeleteModal({ open, item, onConfirm, onClose }) {
   if (!open || !item) return null;
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 backdrop-blur-md"
         style={{ background: "rgba(0,0,0,0.50)" }} onClick={onClose} />
-      <div className="relative w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+      <div className="relative w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl p-5 md:p-6 shadow-2xl"
         style={{ background: "var(--bg-card)", border: "1px solid var(--color-danger-ring)" }}>
+        <div className="flex justify-center mb-4 sm:hidden">
+          <div className="w-10 h-1 rounded-full" style={{ background: "var(--bd-div)" }} />
+        </div>
         <div className="flex flex-col items-center gap-4 text-center">
           <div className="w-11 h-11 rounded-xl flex items-center justify-center"
             style={{ background: "var(--color-danger-muted)", border: "1px solid var(--color-danger-ring)" }}>
@@ -184,18 +191,17 @@ function DeleteModal({ open, item, onConfirm, onClose }) {
             <p className="text-sm font-semibold" style={{ color: "var(--tx-primary)" }}>Remover cliente?</p>
             <p className="text-xs mt-1.5 leading-relaxed" style={{ color: "var(--tx-muted)" }}>
               Remover <span style={{ color: "var(--tx-sub)", fontWeight: 500 }}>{item.name}</span> irá
-              retirar <span style={{ color: "var(--accent)", fontWeight: 600 }}>{fmt(item.valueMonthly || 0)}/mês</span> do
-              lucro do dashboard.
+              retirar <span style={{ color: "var(--accent)", fontWeight: 600 }}>{fmt(item.valueMonthly || 0)}/mês</span> do lucro.
             </p>
           </div>
         </div>
         <div className="flex gap-3 mt-6">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm"
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl text-sm font-medium"
             style={{ color: "var(--tx-muted)", border: "1px solid var(--bd-card)" }}>
             Cancelar
           </button>
           <button onClick={onConfirm}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white hover:brightness-110 transition-all"
+            className="flex-1 py-3 rounded-xl text-sm font-semibold text-white"
             style={{ background: "var(--color-danger)" }}>
             Remover
           </button>
@@ -210,18 +216,15 @@ function DeleteModal({ open, item, onConfirm, onClose }) {
 export default function Clientes() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-
   const [clients,    setClients]    = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [liveStatus, setLiveStatus] = useState("ok");
-
-  const [search,   setSearch]   = useState("");
-  const [viewMode, setViewMode] = useState("list");
-
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editando,  setEditando]  = useState(null);
-  const [deletando, setDeletando] = useState(null);
+  const [search,     setSearch]     = useState("");
+  const [viewMode,   setViewMode]   = useState("list");
+  const [modalOpen,  setModalOpen]  = useState(false);
+  const [editando,   setEditando]   = useState(null);
+  const [deletando,  setDeletando]  = useState(null);
 
   const pollingRef = useRef(null);
   function handleLogout() { localStorage.removeItem("token"); navigate("/login"); }
@@ -290,31 +293,26 @@ export default function Clientes() {
       <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
 
       <main className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-0">
-
         <PageHeader
           title="Clientes"
           subtitle={`${clients.length} cadastrado${clients.length !== 1 ? "s" : ""} · ${fmt(receitaMensal)}/mês`}
-          initials="JS"
           onMenuClick={() => setMobileOpen(true)}
           live={{ status: liveStatus, lastUpdate }}
         />
 
-        <div className="p-4 md:p-8 flex flex-col gap-5">
-          <div className="flex items-end justify-between">
+        <div className="p-4 md:p-8 flex flex-col gap-4 md:gap-5">
+          <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-widest mb-0.5"
                 style={{ color: "var(--tx-muted)" }}>Receita</p>
-              <h1 className="text-xl font-bold tracking-tight" style={{ color: "var(--tx-primary)" }}>
-                Base de Clientes
-              </h1>
+              <h1 className="text-lg md:text-xl font-bold tracking-tight"
+                style={{ color: "var(--tx-primary)" }}>Base de Clientes</h1>
             </div>
             <button onClick={() => fetchClients(true)}
-              className="hidden md:flex items-center gap-1.5 text-xs"
-              style={{ color: "var(--tx-muted)" }}
-              onMouseEnter={e => e.currentTarget.style.color = "var(--tx-primary)"}
-              onMouseLeave={e => e.currentTarget.style.color = "var(--tx-muted)"}>
+              className="flex items-center gap-1.5 text-xs py-2 px-3 rounded-lg"
+              style={{ color: "var(--tx-muted)", border: "1px solid var(--bd-div)" }}>
               <RefreshCw size={11} className={liveStatus === "syncing" ? "animate-spin" : ""} />
-              Atualizar
+              <span className="hidden sm:inline">Atualizar</span>
             </button>
           </div>
 
@@ -325,11 +323,11 @@ export default function Clientes() {
             </div>
           ) : (
             <>
-              {/* KPI Cards */}
+              {/* KPI Cards — 2 col mobile, 4 col desktop */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden col-span-2 transition-transform hover:-translate-y-0.5"
+                <div className="relative rounded-2xl p-4 md:p-5 flex flex-col gap-2 overflow-hidden col-span-2"
                   style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
-                  <div className="absolute top-0 right-0 w-36 h-36 rounded-full pointer-events-none"
+                  <div className="absolute top-0 right-0 w-32 h-32 rounded-full pointer-events-none"
                     style={{ background: "var(--accent)", opacity: 0.06, filter: "blur(32px)", transform: "translate(30%,-30%)" }} />
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold tracking-[0.12em] uppercase"
@@ -339,7 +337,7 @@ export default function Clientes() {
                       <TrendingUp size={13} style={{ color: "var(--accent)" }} />
                     </div>
                   </div>
-                  <p className="text-[28px] font-bold tracking-tight leading-none"
+                  <p className="text-2xl md:text-[28px] font-bold tracking-tight leading-none"
                     style={{ color: "var(--accent)" }}>{fmt(receitaMensal)}</p>
                   <p className="text-[11px]" style={{ color: "var(--tx-muted)" }}>
                     {clients.length} cliente{clients.length !== 1 ? "s" : ""} · ARR {fmt(receitaMensal * 12)}
@@ -357,27 +355,29 @@ export default function Clientes() {
               </div>
 
               {/* Toolbar */}
-              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
-                  style={{ background: "var(--bg-input)", border: "1px solid var(--bd-input)", minWidth: 240 }}>
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* Busca — largura total no mobile */}
+                <div className="flex items-center gap-2 px-3 py-3 rounded-xl flex-1"
+                  style={{ background: "var(--bg-input)", border: "1px solid var(--bd-input)" }}>
                   <Search size={13} style={{ color: "var(--tx-muted)", flexShrink: 0 }} />
                   <input type="text" value={search} onChange={e => setSearch(e.target.value)}
                     placeholder="Buscar por nome, e-mail ou telefone…"
                     className="bg-transparent outline-none w-full text-sm"
                     style={{ color: "var(--tx-primary)", caretColor: "var(--accent)" }} />
                   {search && (
-                    <button onClick={() => setSearch("")} style={{ color: "var(--tx-muted)", cursor: "pointer" }}>
+                    <button onClick={() => setSearch("")} style={{ color: "var(--tx-muted)" }}>
                       <X size={12} />
                     </button>
                   )}
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <div className="flex items-center p-1 rounded-xl gap-1"
+                  {/* View toggle — oculto no mobile */}
+                  <div className="hidden sm:flex items-center p-1 rounded-xl gap-1"
                     style={{ background: "var(--bg-subtle)", border: "1px solid var(--bd-div)" }}>
                     {[{ key: "list", Icon: List }, { key: "grid", Icon: LayoutGrid }].map(({ key, Icon }) => (
                       <button key={key} onClick={() => setViewMode(key)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
                         style={viewMode === key
                           ? { background: "var(--accent-muted)", color: "var(--accent)" }
                           : { color: "var(--tx-muted)" }}>
@@ -385,11 +385,12 @@ export default function Clientes() {
                       </button>
                     ))}
                   </div>
+
+                  {/* Botão novo — largura total no mobile */}
                   <button onClick={() => { setEditando(null); setModalOpen(true); }}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all"
-                    style={{ background: "var(--accent)", boxShadow: "var(--accent-shadow-css)" }}
-                    onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.12)"}
-                    onMouseLeave={e => e.currentTarget.style.filter = "none"}>
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold text-white"
+                    style={{ background: "var(--accent)", boxShadow: "var(--accent-shadow-css)",
+                      minWidth: "fit-content" }}>
                     <Plus size={15} /> Novo Cliente
                   </button>
                 </div>
@@ -403,67 +404,75 @@ export default function Clientes() {
                   desc={search ? `Nenhum resultado para "${search}"` : "Cadastre um cliente para gerar receita no dashboard"}
                   action={!search && (
                     <button onClick={() => { setEditando(null); setModalOpen(true); }}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all"
-                      style={{ background: "var(--accent)", boxShadow: "var(--accent-shadow-css)" }}
-                      onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.12)"}
-                      onMouseLeave={e => e.currentTarget.style.filter = "none"}>
+                      className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold text-white"
+                      style={{ background: "var(--accent)", boxShadow: "var(--accent-shadow-css)" }}>
                       <Plus size={14} /> Cadastrar cliente
                     </button>
                   )}
                 />
 
-              ) : viewMode === "list" ? (
-                <div className="rounded-2xl overflow-hidden"
-                  style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
-                  <div className="grid px-5 py-3 items-center"
-                    style={{ gridTemplateColumns: "1fr 160px 130px 64px", borderBottom: "1px solid var(--bd-div)" }}>
-                    {["Cliente", "Telefone", "Receita/mês", ""].map(h => (
-                      <span key={h} style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
-                        textTransform: "uppercase", color: "var(--tx-muted)" }}>{h}</span>
-                    ))}
-                  </div>
-                  {filtrados.map((c, i) => {
-                    const hasValue = (c.valueMonthly || 0) > 0;
-                    return (
-                      <div key={c.id} className="grid px-5 py-3.5 items-center group cursor-default transition-colors"
-                        style={{ gridTemplateColumns: "1fr 160px 130px 64px",
-                          borderBottom: i < filtrados.length - 1 ? "1px solid var(--bd-div)" : "none" }}
-                        onMouseEnter={e => e.currentTarget.style.background = "var(--bg-hover)"}
-                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                        <div className="flex items-center gap-3 min-w-0">
-                          <Avatar name={c.name} />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate" style={{ color: "var(--tx-primary)" }}>{c.name}</p>
-                            <p className="text-[11px] truncate" style={{ color: "var(--tx-muted)" }}>{c.email}</p>
-                          </div>
-                        </div>
-                        <span className="text-xs font-mono" style={{ color: "var(--tx-sub)" }}>
-                          {c.phone || <span style={{ color: "var(--tx-muted)" }}>—</span>}
-                        </span>
-                        <span className="text-sm font-bold tabular-nums"
-                          style={{ color: hasValue ? "var(--accent)" : "var(--tx-muted)" }}>
-                          {hasValue ? `+${fmt(c.valueMonthly)}` : fmt(0)}
-                        </span>
-                        <ActionButtons
-                          onEdit={() => { setEditando(c); setModalOpen(true); }}
-                          onDelete={() => setDeletando(c)} />
-                      </div>
-                    );
-                  })}
-                </div>
-
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {filtrados.map(c => {
+                // Mobile sempre mostra cards, desktop respeita viewMode
+                <div className={
+                  viewMode === "grid" || window.innerWidth < 640
+                    ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+                    : "rounded-2xl overflow-hidden"
+                }
+                  style={viewMode === "list" && window.innerWidth >= 640
+                    ? { background: "var(--bg-card)", border: "1px solid var(--bd-card)" }
+                    : {}}>
+
+                  {/* Desktop list view */}
+                  {viewMode === "list" && (
+                    <div className="hidden sm:block">
+                      <div className="grid px-5 py-3 items-center"
+                        style={{ gridTemplateColumns: "1fr 160px 130px 64px",
+                          borderBottom: "1px solid var(--bd-div)" }}>
+                        {["Cliente", "Telefone", "Receita/mês", ""].map(h => (
+                          <span key={h} style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+                            textTransform: "uppercase", color: "var(--tx-muted)" }}>{h}</span>
+                        ))}
+                      </div>
+                      {filtrados.map((c, i) => {
+                        const hasValue = (c.valueMonthly || 0) > 0;
+                        return (
+                          <div key={c.id} className="grid px-5 py-3.5 items-center group cursor-default transition-colors"
+                            style={{ gridTemplateColumns: "1fr 160px 130px 64px",
+                              borderBottom: i < filtrados.length - 1 ? "1px solid var(--bd-div)" : "none" }}
+                            onMouseEnter={e => e.currentTarget.style.background = "var(--bg-hover)"}
+                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <Avatar name={c.name} />
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate" style={{ color: "var(--tx-primary)" }}>{c.name}</p>
+                                <p className="text-[11px] truncate" style={{ color: "var(--tx-muted)" }}>{c.email}</p>
+                              </div>
+                            </div>
+                            <span className="text-xs font-mono" style={{ color: "var(--tx-sub)" }}>{c.phone || "—"}</span>
+                            <span className="text-sm font-bold tabular-nums"
+                              style={{ color: hasValue ? "var(--accent)" : "var(--tx-muted)" }}>
+                              {hasValue ? `+${fmt(c.valueMonthly)}` : fmt(0)}
+                            </span>
+                            <ActionButtons
+                              onEdit={() => { setEditando(c); setModalOpen(true); }}
+                              onDelete={() => setDeletando(c)} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Cards — sempre visível no mobile, opcional no desktop */}
+                  {(viewMode === "grid" || true) && filtrados.map(c => {
                     const hasValue = (c.valueMonthly || 0) > 0;
+                    const isListDesktop = viewMode === "list";
                     return (
-                      <div key={c.id} className="relative rounded-2xl p-4 flex flex-col gap-3 overflow-hidden group transition-transform hover:-translate-y-0.5"
+                      <div key={`card-${c.id}`}
+                        className={`${isListDesktop ? "sm:hidden" : ""} relative rounded-2xl p-4 flex flex-col gap-3 overflow-hidden group`}
                         style={{ background: "var(--bg-card)",
                           border: hasValue ? "1px solid var(--accent-ring)" : "1px solid var(--bd-card)" }}>
-                        <div className="absolute top-0 right-0 w-24 h-24 rounded-full pointer-events-none"
-                          style={{ background: "var(--accent)", opacity: 0.05, filter: "blur(24px)", transform: "translate(30%,-30%)" }} />
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <Avatar name={c.name} size={36} />
                             <div className="min-w-0">
                               <p className="text-sm font-semibold truncate" style={{ color: "var(--tx-primary)" }}>{c.name}</p>
@@ -520,7 +529,7 @@ function Avatar({ name = "", size = 32 }) {
 
 function KpiCard({ label, value, sub, icon, iconBg }) {
   return (
-    <div className="relative rounded-2xl p-5 flex flex-col gap-3 overflow-hidden transition-transform hover:-translate-y-0.5"
+    <div className="relative rounded-2xl p-4 md:p-5 flex flex-col gap-2 overflow-hidden"
       style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
       <div className="flex items-center justify-between">
         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
@@ -529,25 +538,25 @@ function KpiCard({ label, value, sub, icon, iconBg }) {
           {icon}
         </div>
       </div>
-      <p className="text-xl font-bold tracking-tight leading-none" style={{ color: "var(--tx-primary)" }}>{value}</p>
-      <p className="text-[11px]" style={{ color: "var(--tx-muted)" }}>{sub}</p>
+      <p className="text-lg md:text-xl font-bold tracking-tight" style={{ color: "var(--tx-primary)" }}>{value}</p>
+      <p className="text-[11px] truncate" style={{ color: "var(--tx-muted)" }}>{sub}</p>
     </div>
   );
 }
 
 function ActionButtons({ onEdit, onDelete }) {
   return (
-    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+    <div className="flex gap-1 shrink-0">
       {[
         { action: onEdit,   Icon: Pencil, hoverBd: "var(--accent-ring)" },
         { action: onDelete, Icon: Trash2, hoverBd: "var(--color-danger-ring)" },
       ].map(({ action, Icon, hoverBd }, i) => (
         <button key={i} onClick={action}
-          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+          className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
           style={{ border: "1px solid var(--bd-div)", background: "transparent" }}
           onMouseEnter={e => e.currentTarget.style.borderColor = hoverBd}
           onMouseLeave={e => e.currentTarget.style.borderColor = "var(--bd-div)"}>
-          <Icon size={11} style={{ color: "var(--tx-sub)" }} />
+          <Icon size={12} style={{ color: "var(--tx-sub)" }} />
         </button>
       ))}
     </div>
@@ -556,7 +565,7 @@ function ActionButtons({ onEdit, onDelete }) {
 
 function EmptyState({ icon, title, desc, action }) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
+    <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
         style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-ring)" }}>
         {icon}

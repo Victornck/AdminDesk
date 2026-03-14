@@ -1,6 +1,5 @@
 /**
  * PageHeader — header compartilhado entre todas as páginas.
- * Usa CSS vars do tema — zero lógica de darkMode aqui.
  */
 
 import { Bell, RefreshCw, Circle } from "lucide-react";
@@ -10,12 +9,11 @@ import { useTheme } from "../hooks/useTheme";
 /**
  * @param {string}   title       — título principal (ex: "Clientes")
  * @param {string}   [subtitle]  — linha menor abaixo do título
- * @param {string}   [initials]  — iniciais do usuário (ex: "JS")
  * @param {function} onMenuClick — abre o drawer mobile
  * @param {object}   [live]      — { status: "ok"|"syncing"|"error", lastUpdate: Date }
- * @param {node}     [children]  — elementos extras no lado direito (ex: botão de busca)
+ * @param {node}     [children]  — elementos extras no lado direito
  */
-export function PageHeader({ title, subtitle, initials, onMenuClick, live, children }) {
+export function PageHeader({ title, subtitle, onMenuClick, live, children }) {
   const { darkMode, toggleDark } = useTheme();
 
   return (
@@ -23,11 +21,14 @@ export function PageHeader({ title, subtitle, initials, onMenuClick, live, child
       className="sticky top-0 z-10 backdrop-blur-xl px-4 md:px-8 h-14 flex items-center justify-between"
       style={{ background: "var(--bg-header)", borderBottom: "1px solid var(--bd-div)" }}
     >
-      {/* Esquerda: menu + título */}
+      {/* Esquerda */}
       <div className="flex items-center gap-4">
-        <MenuButton onClick={onMenuClick} />
+        <div className="md:hidden">        {/* ← adicione este wrapper */}
+          <MenuButton onClick={onMenuClick} />
+        </div>
         <div>
-          <p className="text-sm font-semibold" style={{ color: "var(--tx-primary)", letterSpacing: "-0.01em" }}>
+          <p className="text-sm font-semibold"
+            style={{ color: "var(--tx-primary)", letterSpacing: "-0.01em" }}>
             {title}
           </p>
           {subtitle && (
@@ -41,10 +42,8 @@ export function PageHeader({ title, subtitle, initials, onMenuClick, live, child
       {/* Direita */}
       <div className="flex items-center gap-2">
 
-        {/* Slot extra (busca, botões, etc.) */}
         {children}
 
-        {/* Live status — só renderiza se a prop live for passada */}
         {live && (
           <div
             className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
@@ -82,13 +81,6 @@ export function PageHeader({ title, subtitle, initials, onMenuClick, live, child
           />
         </button>
 
-        {/* Avatar */}
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white select-none"
-          style={{ background: "var(--accent)", boxShadow: "var(--accent-shadow-css)" }}
-        >
-          {initials ?? "?"}
-        </div>
       </div>
     </header>
   );
@@ -97,14 +89,10 @@ export function PageHeader({ title, subtitle, initials, onMenuClick, live, child
 function LiveDot() {
   return (
     <span className="relative flex items-center justify-center w-4 h-4">
-      <span
-        className="absolute inline-flex w-3 h-3 rounded-full opacity-60 animate-ping"
-        style={{ background: "var(--accent)" }}
-      />
-      <span
-        className="relative inline-flex w-2 h-2 rounded-full"
-        style={{ background: "var(--accent)" }}
-      />
+      <span className="absolute inline-flex w-3 h-3 rounded-full opacity-60 animate-ping"
+        style={{ background: "var(--accent)" }} />
+      <span className="relative inline-flex w-2 h-2 rounded-full"
+        style={{ background: "var(--accent)" }} />
     </span>
   );
 }

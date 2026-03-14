@@ -190,32 +190,35 @@ export default function Relatorios() {
       <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
 
       <main className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-0">
+        <PageHeader title="Relatórios" onMenuClick={() => setMobileOpen(true)} />
 
-        <PageHeader title="Relatórios" initials="JS" onMenuClick={() => setMobileOpen(true)} />
+        <div className="p-4 md:p-8 flex flex-col gap-4 md:gap-5">
 
-        <div className="p-5 md:p-8 flex flex-col gap-5">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          {/* Título + controles — empilha no mobile */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-widest mb-0.5"
                 style={{ color: "var(--tx-muted)" }}>Financeiro</p>
-              <h1 className="text-xl font-bold tracking-tight" style={{ color: "var(--tx-primary)" }}>Relatórios</h1>
+              <h1 className="text-lg md:text-xl font-bold tracking-tight"
+                style={{ color: "var(--tx-primary)" }}>Relatórios</h1>
             </div>
-            <div className="flex items-center gap-3">
+
+            <div className="flex items-center gap-2">
               {/* Navegador de mês */}
-              <div className="flex items-center gap-1 px-1 py-1 rounded-xl"
+              <div className="flex items-center flex-1 sm:flex-none gap-1 px-1 py-1 rounded-xl"
                 style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
-                <button onClick={prevMes} className="p-1.5 rounded-lg transition-colors"
+                <button onClick={prevMes} className="p-2 rounded-lg"
                   style={{ color: "var(--tx-muted)" }}
                   onMouseEnter={e => e.currentTarget.style.background = "var(--bg-subtle)"}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                   <ChevronLeft size={14} />
                 </button>
-                <span className="text-sm font-semibold px-3 min-w-[140px] text-center tabular-nums"
-                  style={{ color: "var(--tx-primary)" }}>
+                <span className="text-sm font-semibold flex-1 text-center tabular-nums px-1"
+                  style={{ color: "var(--tx-primary)", minWidth: 120 }}>
                   {MESES[mes]} {ano}
                 </span>
                 <button onClick={nextMes} disabled={isFuturo}
-                  className="p-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-2 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
                   style={{ color: "var(--tx-muted)" }}
                   onMouseEnter={e => { if (!e.currentTarget.disabled) e.currentTarget.style.background = "var(--bg-subtle)"; }}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
@@ -225,12 +228,10 @@ export default function Relatorios() {
 
               {/* Botão PDF */}
               <button onClick={downloadPDF} disabled={generating || loading}
-                className="flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-50"
-                style={{ background: "var(--accent)", boxShadow: "var(--accent-shadow-css)" }}
-                onMouseEnter={e => { if (!e.currentTarget.disabled) e.currentTarget.style.filter = "brightness(1.12)"; }}
-                onMouseLeave={e => e.currentTarget.style.filter = "none"}>
+                className="flex items-center gap-2 px-4 py-2.5 text-white text-sm font-semibold rounded-xl disabled:opacity-50"
+                style={{ background: "var(--accent)", boxShadow: "var(--accent-shadow-css)" }}>
                 {generating ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                {generating ? "Gerando..." : "Baixar PDF"}
+                <span className="hidden sm:inline">{generating ? "Gerando..." : "Baixar PDF"}</span>
               </button>
             </div>
           </div>
@@ -242,18 +243,18 @@ export default function Relatorios() {
             </div>
           ) : (
             <>
-              {/* KPI Cards */}
+              {/* KPI Cards — 2 col mobile, 4 col desktop */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
-                  { label: "Receitas",   value: fmt(totalReceitaMes), Icon: TrendingUp,  useAccent: true },
+                  { label: "Receitas",   value: fmt(totalReceitaMes), Icon: TrendingUp,   useAccent: true },
                   { label: "Despesas",   value: fmt(totalDespesaMes), Icon: TrendingDown, danger: true },
-                  { label: "Lucro Líq.", value: fmt(lucroMes),        Icon: Wallet,      ...(lucroPositivo ? { useAccent: true } : { danger: true }) },
-                  { label: "Clientes",   value: clientes.length,      Icon: Users,       purple: true },
+                  { label: "Lucro Líq.", value: fmt(lucroMes),        Icon: Wallet,       ...(lucroPositivo ? { useAccent: true } : { danger: true }) },
+                  { label: "Clientes",   value: clientes.length,      Icon: Users,        purple: true },
                 ].map(({ label, value, Icon, useAccent, danger }) => (
                   <div key={label} className="rounded-2xl p-4 flex flex-col gap-2"
                     style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
                     <div className="flex items-center justify-between">
-                      <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase",
+                      <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase",
                         letterSpacing: "0.08em", color: "var(--tx-muted)" }}>{label}</span>
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{
                         background: useAccent ? "var(--accent-muted)" : danger ? "var(--color-danger-muted)" : "rgba(168,85,247,0.12)",
@@ -263,19 +264,21 @@ export default function Relatorios() {
                         }} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold tracking-tight" style={{ color: "var(--tx-primary)" }}>{value}</p>
+                    <p className="text-lg md:text-xl font-bold tracking-tight"
+                      style={{ color: "var(--tx-primary)" }}>{value}</p>
                   </div>
                 ))}
               </div>
 
               {mrrMes > 0 && (
-                <div className="rounded-2xl p-4 flex flex-wrap gap-4"
+                <div className="rounded-2xl p-4 flex flex-wrap gap-3"
                   style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
                   {[{ label: "MRR Clientes", value: fmt(mrrMes), opacity: 1 },
                     { label: "Lançamentos income", value: fmt(totalReceitaMes - mrrMes), opacity: 0.5 }]
                     .map(({ label, value, opacity }) => (
                       <div key={label} className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)", opacity }} />
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0"
+                          style={{ background: "var(--accent)", opacity }} />
                         <span className="text-xs" style={{ color: "var(--tx-muted)" }}>{label}</span>
                         <span className="text-xs font-semibold" style={{ color: "var(--tx-sub)" }}>{value}</span>
                       </div>
@@ -285,28 +288,66 @@ export default function Relatorios() {
 
               <Section title="Receitas" count={receitasMes.length} dotAccent>
                 {receitasMes.length === 0 ? <Empty msg="Nenhuma receita registrada neste mês" />
-                  : <Table rows={receitasMes} footerLabel="Total receitas"
-                      footerValue={fmt(receitasMes.reduce((a,d) => a+(d.price||0),0))}
-                      valueStyle={{ color: "var(--accent)" }} />}
+                  : <>
+                      {/* Tabela — só desktop */}
+                      <div className="hidden sm:block">
+                        <Table rows={receitasMes} footerLabel="Total receitas"
+                          footerValue={fmt(receitasMes.reduce((a,d) => a+(d.price||0),0))}
+                          valueStyle={{ color: "var(--accent)" }} />
+                      </div>
+                      {/* Cards — só mobile */}
+                      <div className="sm:hidden flex flex-col">
+                        {receitasMes.map((d, i) => (
+                          <TransactionCard key={i} item={d}
+                            valueColor="var(--accent)" prefix="+" />
+                        ))}
+                        <div className="flex items-center justify-between px-4 py-3"
+                          style={{ background: "var(--bg-card-2)", borderTop: "1px solid var(--bd-div)" }}>
+                          <span className="text-xs font-semibold uppercase tracking-widest"
+                            style={{ color: "var(--tx-muted)" }}>Total</span>
+                          <span className="text-sm font-bold" style={{ color: "var(--accent)" }}>
+                            {fmt(receitasMes.reduce((a,d) => a+(d.price||0),0))}
+                          </span>
+                        </div>
+                      </div>
+                    </>}
               </Section>
 
               <Section title="Despesas" count={despesasMes.length} dotColor="var(--color-danger)">
                 {despesasMes.length === 0 ? <Empty msg="Nenhuma despesa registrada neste mês" />
-                  : <Table rows={despesasMes} footerLabel="Total despesas"
-                      footerValue={fmt(totalDespesaMes)}
-                      valueStyle={{ color: "var(--color-danger)" }} />}
+                  : <>
+                      <div className="hidden sm:block">
+                        <Table rows={despesasMes} footerLabel="Total despesas"
+                          footerValue={fmt(totalDespesaMes)}
+                          valueStyle={{ color: "var(--color-danger)" }} />
+                      </div>
+                      <div className="sm:hidden flex flex-col">
+                        {despesasMes.map((d, i) => (
+                          <TransactionCard key={i} item={d}
+                            valueColor="var(--color-danger)" prefix="−" />
+                        ))}
+                        <div className="flex items-center justify-between px-4 py-3"
+                          style={{ background: "var(--bg-card-2)", borderTop: "1px solid var(--bd-div)" }}>
+                          <span className="text-xs font-semibold uppercase tracking-widest"
+                            style={{ color: "var(--tx-muted)" }}>Total</span>
+                          <span className="text-sm font-bold" style={{ color: "var(--color-danger)" }}>
+                            {fmt(totalDespesaMes)}
+                          </span>
+                        </div>
+                      </div>
+                    </>}
               </Section>
 
               {categorias.length > 0 && (
                 <Section title="Despesas por Categoria" dotColor="var(--tx-muted)">
                   <div>
                     {categorias.map(([cat, val]) => (
-                      <div key={cat} className="flex items-center gap-3 py-3 px-5"
+                      <div key={cat} className="flex items-center gap-3 py-3 px-4 md:px-5"
                         style={{ borderBottom: "1px solid var(--bd-div)" }}>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium" style={{ color: "var(--tx-primary)" }}>{cat}</p>
-                          <div className="mt-1.5 h-1 rounded-full overflow-hidden" style={{ background: "var(--bd-div)" }}>
-                            <div className="h-1 rounded-full bg-rose-400"
+                          <div className="mt-1.5 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bd-div)" }}>
+                            <div className="h-full rounded-full bg-rose-400"
                               style={{ width: `${Math.min(100, (val / totalDespesaMes) * 100)}%` }} />
                           </div>
                         </div>
@@ -326,7 +367,7 @@ export default function Relatorios() {
                 {clientes.length === 0 ? <Empty msg="Nenhum cliente cadastrado" /> : (
                   <div>
                     {clientes.map((c, i) => (
-                      <div key={i} className="flex items-center gap-3 px-5 py-3"
+                      <div key={i} className="flex items-center gap-3 px-4 md:px-5 py-3"
                         style={{ borderBottom: i < clientes.length - 1 ? "1px solid var(--bd-div)" : "none" }}>
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
                           style={{ background: "rgba(168,85,247,0.12)", color: "#a855f7" }}>
@@ -334,14 +375,14 @@ export default function Relatorios() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate" style={{ color: "var(--tx-primary)" }}>{c.name}</p>
-                          <p className="text-[11px] truncate hidden md:block" style={{ color: "var(--tx-muted)" }}>{c.email}</p>
+                          <p className="text-[11px] truncate" style={{ color: "var(--tx-muted)" }}>{c.email}</p>
                         </div>
                         <span className="text-sm font-semibold tabular-nums shrink-0" style={{ color: "#a855f7" }}>
                           {fmt(c.valueMonthly)}
                         </span>
                       </div>
                     ))}
-                    <div className="flex items-center justify-between px-5 py-3"
+                    <div className="flex items-center justify-between px-4 md:px-5 py-3"
                       style={{ background: "var(--bg-card-2)", borderTop: "1px solid var(--bd-div)" }}>
                       <span className="text-xs font-semibold uppercase tracking-widest"
                         style={{ color: "var(--tx-muted)" }}>MRR Total</span>
@@ -379,11 +420,37 @@ function fmtDate(s) {
   return `${d}/${m}/${y}`;
 }
 
+// Card de transação para mobile (substitui linhas de tabela)
+function TransactionCard({ item, valueColor, prefix }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3"
+      style={{ borderBottom: "1px solid var(--bd-div)" }}>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate" style={{ color: "var(--tx-primary)" }}>
+          {item.descriptor || "-"}
+        </p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-[11px]" style={{ color: "var(--tx-muted)" }}>{fmtDate(item.data)}</span>
+          {item.categoria && (
+            <>
+              <span style={{ color: "var(--bd-div)" }}>·</span>
+              <span className="text-[11px]" style={{ color: "var(--tx-muted)" }}>{item.categoria}</span>
+            </>
+          )}
+        </div>
+      </div>
+      <span className="text-sm font-bold tabular-nums shrink-0" style={{ color: valueColor }}>
+        {prefix}{fmt(item.price)}
+      </span>
+    </div>
+  );
+}
+
 function Section({ title, count, dotAccent, dotColor, children }) {
   return (
     <div className="rounded-2xl overflow-hidden"
       style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
-      <div className="flex items-center justify-between px-5 py-4"
+      <div className="flex items-center justify-between px-4 md:px-5 py-4"
         style={{ borderBottom: "1px solid var(--bd-div)" }}>
         <div className="flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full"
@@ -418,7 +485,7 @@ function Table({ rows, footerLabel, footerValue, valueStyle }) {
         </thead>
         <tbody>
           {rows.map((d, i) => (
-            <tr key={i} className="transition-colors" style={{ borderBottom: "1px solid var(--bd-div)" }}
+            <tr key={i} style={{ borderBottom: "1px solid var(--bd-div)" }}
               onMouseEnter={e => e.currentTarget.style.background = "var(--bg-hover)"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
               <td className="px-5 py-3 font-medium" style={{ color: "var(--tx-primary)" }}>{d.descriptor || "-"}</td>

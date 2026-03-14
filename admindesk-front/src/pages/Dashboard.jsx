@@ -17,11 +17,9 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 const MESES   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
 function getToken() { return localStorage.getItem("token") ?? ""; }
-
 const fmt = (v) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
 
-// ─── Tooltip ──────────────────────────────────────────────────────────────────
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
@@ -41,7 +39,6 @@ function CustomTooltip({ active, payload, label }) {
   );
 }
 
-// ─── Recharts não aceita CSS vars em SVG — lê o valor computado via observer ──
 function AccentAreaChart({ data }) {
   const [accentHex, setAccentHex] = useState("#3b82f6");
   const [gridColor, setGridColor] = useState("#e2e8f0");
@@ -61,7 +58,7 @@ function AccentAreaChart({ data }) {
   }, []);
 
   return (
-    <ResponsiveContainer width="100%" height={200}>
+    <ResponsiveContainer width="100%" height={180}>
       <AreaChart data={data} margin={{ top: 2, right: 0, left: -22, bottom: 0 }}>
         <defs>
           <linearGradient id="gradReceita" x1="0" y1="0" x2="0" y2="1">
@@ -74,8 +71,8 @@ function AccentAreaChart({ data }) {
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-        <XAxis dataKey="time" tick={{ fill: "var(--tx-muted)", fontSize: 11 }} axisLine={false} tickLine={false} />
-        <YAxis tick={{ fill: "var(--tx-muted)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
+        <XAxis dataKey="time" tick={{ fill: "var(--tx-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fill: "var(--tx-muted)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
         <Tooltip content={<CustomTooltip />} />
         <Area type="monotone" dataKey="receita" name="Receita"
           stroke={accentHex} strokeWidth={2} fill="url(#gradReceita)"
@@ -88,7 +85,6 @@ function AccentAreaChart({ data }) {
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -157,13 +153,10 @@ export default function Dashboard() {
       <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
 
       <main className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-0">
-
         <PageHeader
           title="Dashboard"
-          initials="JS"
           onMenuClick={() => setMobileOpen(true)}
         >
-          {/* Busca — slot children do PageHeader */}
           <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg"
             style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
             <Search size={13} style={{ color: "var(--tx-muted)" }} />
@@ -173,17 +166,18 @@ export default function Dashboard() {
           </div>
         </PageHeader>
 
-        <div className="p-5 md:p-8 flex flex-col gap-5">
-          <div className="flex items-end justify-between">
+        <div className="p-4 md:p-8 flex flex-col gap-4 md:gap-5">
+          {/* Cabeçalho da seção */}
+          <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-widest mb-0.5"
                 style={{ color: "var(--tx-muted)" }}>Visão geral</p>
-              <h1 className="text-xl font-bold tracking-tight" style={{ color: "var(--tx-primary)" }}>
+              <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: "var(--tx-primary)" }}>
                 {new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
                   .replace(/^\w/, c => c.toUpperCase())}
               </h1>
             </div>
-            <button className="hidden md:flex items-center gap-1.5 text-xs transition-colors"
+            <button className="hidden md:flex items-center gap-1.5 text-xs"
               style={{ color: "var(--tx-muted)" }}>
               <SlidersHorizontal size={12} /> Filtrar período
             </button>
@@ -196,8 +190,8 @@ export default function Dashboard() {
             </div>
           ) : (
             <>
-              {/* KPI Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* KPI Cards — 1 col mobile, 3 col desktop */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
                 {/* Receitas */}
                 <Card>
@@ -209,7 +203,7 @@ export default function Dashboard() {
                     </div>
                     <TrendingUp size={14} style={{ color: "var(--accent)" }} />
                   </div>
-                  <p className="text-[26px] font-bold tracking-tight leading-none"
+                  <p className="text-2xl md:text-[26px] font-bold tracking-tight leading-none"
                     style={{ color: "var(--tx-primary)" }}>
                     {fmt(totalReceitas)}
                   </p>
@@ -247,14 +241,14 @@ export default function Dashboard() {
                     </div>
                     <TrendingDown size={14} className="text-rose-500" />
                   </div>
-                  <p className="text-[26px] font-bold tracking-tight leading-none"
+                  <p className="text-2xl md:text-[26px] font-bold tracking-tight leading-none"
                     style={{ color: "var(--tx-primary)" }}>
                     {fmt(totalDespesas)}
                   </p>
                 </Card>
 
                 {/* Lucro */}
-                <div className="rounded-2xl p-5 flex flex-col gap-3"
+                <div className="rounded-2xl p-4 md:p-5 flex flex-col gap-3"
                   style={lucroPositivo
                     ? { background: "var(--accent)", boxShadow: "var(--accent-shadow-css)", border: "1px solid var(--accent)" }
                     : { background: "#dc2626", border: "1px solid #ef4444" }}>
@@ -267,7 +261,9 @@ export default function Dashboard() {
                     </div>
                     <Wallet size={14} className="text-white/70" />
                   </div>
-                  <p className="text-[26px] font-bold tracking-tight leading-none text-white">{fmt(lucro)}</p>
+                  <p className="text-2xl md:text-[26px] font-bold tracking-tight leading-none text-white">
+                    {fmt(lucro)}
+                  </p>
                   <p className="text-[11px] text-white/60">
                     {fmt(totalReceitas)} receitas − {fmt(totalDespesas)} despesas
                   </p>
@@ -276,14 +272,14 @@ export default function Dashboard() {
 
               {/* Gráfico */}
               <Card>
-                <div className="flex items-start justify-between mb-5">
+                <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-sm font-semibold" style={{ color: "var(--tx-primary)" }}>
                       Receitas vs Despesas
                     </h3>
                     <p className="text-xs mt-0.5" style={{ color: "var(--tx-muted)" }}>Evolução mensal</p>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full" style={{ background: "var(--accent)" }} />
                       <span className="text-[11px]" style={{ color: "var(--tx-muted)" }}>Receitas</span>
@@ -295,7 +291,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 {areaData.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-[200px] gap-3">
+                  <div className="flex flex-col items-center justify-center h-[160px] gap-3">
                     <TrendingUp size={17} style={{ color: "var(--tx-muted)" }} />
                     <p className="text-xs" style={{ color: "var(--tx-muted)" }}>Nenhum dado financeiro registrado</p>
                   </div>
@@ -306,7 +302,7 @@ export default function Dashboard() {
 
               {/* Clientes recentes */}
               <Card noPadding>
-                <div className="flex items-center justify-between px-5 py-4"
+                <div className="flex items-center justify-between px-4 md:px-5 py-4"
                   style={{ borderBottom: "1px solid var(--bd-div)" }}>
                   <div>
                     <h3 className="text-sm font-semibold" style={{ color: "var(--tx-primary)" }}>
@@ -317,42 +313,38 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <button onClick={() => navigate("/clientes")}
-                    className="flex items-center gap-1 text-xs font-medium transition-opacity hover:opacity-75"
+                    className="flex items-center gap-1 text-xs font-medium"
                     style={{ color: "var(--accent)" }}>
                     Ver todos <ChevronRight size={12} />
                   </button>
                 </div>
+
                 {recentClients.length === 0 ? (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex items-center justify-center py-10">
                     <p className="text-xs" style={{ color: "var(--tx-muted)" }}>Nenhum cliente cadastrado ainda</p>
                   </div>
                 ) : (
                   <div>
                     {recentClients.map((c, i) => (
-                      <div key={i} className="flex items-center gap-3 px-5 py-3 transition-colors"
+                      <div key={i}
+                        className="flex items-center gap-3 px-4 md:px-5 py-3"
                         style={{ borderBottom: i < recentClients.length - 1 ? "1px solid var(--bd-div)" : "none" }}
                         onMouseEnter={e => e.currentTarget.style.background = "var(--bg-hover)"}
                         onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold shrink-0"
                           style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>
                           {c.name?.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate" style={{ color: "var(--tx-primary)" }}>{c.name}</p>
-                          <p className="text-[11px] truncate hidden md:block" style={{ color: "var(--tx-muted)" }}>{c.email}</p>
+                          <p className="text-[11px] truncate" style={{ color: "var(--tx-muted)" }}>{c.email}</p>
                         </div>
                         {(c.valueMonthly || 0) > 0 && (
-                          <span className="text-[11px] font-semibold tabular-nums shrink-0"
+                          <span className="text-[12px] font-semibold tabular-nums shrink-0"
                             style={{ color: "var(--accent)" }}>
                             +{fmt(c.valueMonthly)}
                           </span>
                         )}
-                        <span className="hidden md:block text-[11px] shrink-0"
-                          style={{ color: "var(--tx-muted)" }}>{c.phone}</span>
-                        <button style={{ color: "var(--tx-muted)", opacity: 0 }}
-                          className="group-hover:opacity-100 transition-opacity">
-                          <MoreHorizontal size={14} />
-                        </button>
                       </div>
                     ))}
                   </div>
@@ -370,7 +362,7 @@ export default function Dashboard() {
 
 function Card({ children, noPadding = false }) {
   return (
-    <div className={`rounded-2xl flex flex-col gap-3 ${noPadding ? "overflow-hidden" : "p-5"}`}
+    <div className={`rounded-2xl flex flex-col gap-3 ${noPadding ? "overflow-hidden" : "p-4 md:p-5"}`}
       style={{ background: "var(--bg-card)", border: "1px solid var(--bd-card)" }}>
       {children}
     </div>
