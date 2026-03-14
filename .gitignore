@@ -19,3 +19,4 @@ application-local.yml
 # Sistema
 .DS_Store
 Thumbs.db
+node_modules/
