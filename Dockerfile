@@ -10,6 +10,8 @@ COPY admindesk-front/ .
 ARG VITE_API_URL=https://admindesk-8oea.onrender.com
 ENV VITE_API_URL=$VITE_API_URL
 
+RUN echo "VITE_API_URL=$VITE_API_URL"
+
 RUN npx vite build
 
 
