@@ -11,8 +11,6 @@ target/
 # Spring Boot
 application-local.properties
 application-local.yml
-application.properties
-application.yml
 
 # Variáveis de ambiente
 .env
