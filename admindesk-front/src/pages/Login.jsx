@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, BarChart2, ArrowRight } from "lucide-react";
 
-const API_URL = "http://localhost:8080";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
 export default function Login() {
   const navigate = useNavigate();

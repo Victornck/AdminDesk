@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, BarChart2, User, CreditCard, ArrowRight, Check } from "lucide-react";
 
-const API_URL = "http://localhost:8080";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
 function maskCPF(value) {
   return value
