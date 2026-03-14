@@ -186,20 +186,21 @@ export default function Relatorios() {
 
       const filename = `relatorio-${MESES_ABREV[mes].toLowerCase()}-${ano}.pdf`;
 
-      // ── iOS: abre em nova aba sem bagunçar o histórico ──────────────────────
+      // ── iOS Safari: não suporta <a download> nem blob URL — usa data URI ────
       if (isIOS()) {
-        const blob = doc.output("blob");
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement("a");
-        a.href     = url;
-        a.target   = "_blank";
-        a.rel      = "noopener noreferrer";
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        // Libera o blob após 60s
-        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        // Abre o PDF como data URI em nova aba; o usuário salva pelo menu "Compartilhar"
+        const dataUri = doc.output("datauristring");
+        const w = window.open("", "_blank");
+        if (w) {
+          w.document.write(
+            `<!DOCTYPE html><html><head><title>${filename}</title>` +
+            `<meta name="viewport" content="width=device-width,initial-scale=1">` +
+            `<style>*{margin:0;padding:0}html,body{height:100%;background:#1a1a1a}` +
+            `iframe{width:100%;height:100%;border:none}</style></head>` +
+            `<body><iframe src="${dataUri}"></iframe></body></html>`
+          );
+          w.document.close();
+        }
       } else {
         doc.save(filename);
       }
