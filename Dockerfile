@@ -6,6 +6,10 @@ COPY admindesk-front/package.json admindesk-front/package-lock.json ./
 RUN npm install
 
 COPY admindesk-front/ .
+
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 RUN npx vite build
 
 
