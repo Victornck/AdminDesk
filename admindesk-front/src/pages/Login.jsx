@@ -53,7 +53,10 @@ export default function Login() {
   const handleKeyDown = (e) => { if (e.key === "Enter") submit(); };
 
   return (
-    <div className="min-h-screen flex" style={{ background: C.bgPage, color: C.txPrimary }}>
+    <div
+      className="flex"
+      style={{ minHeight: "100dvh", background: C.bgPage, color: C.txPrimary }}
+    >
 
       {/* ── Painel esquerdo — decorativo ── */}
       <div
@@ -113,8 +116,10 @@ export default function Login() {
       </div>
 
       {/* ── Painel direito — formulário ── */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 relative"
-        style={{ background: C.bgPage }}>
+      <div
+        className="flex-1 flex items-start justify-center overflow-y-auto relative"
+        style={{ background: C.bgPage }}
+      >
         <div className="absolute pointer-events-none" style={{
           width: "500px", height: "500px",
           background: `radial-gradient(circle, ${C.accentMuted} 0%, transparent 65%)`,
@@ -123,7 +128,7 @@ export default function Login() {
           opacity: 0.08,
         }} />
 
-        <div className="relative w-full max-w-[360px]">
+        <div className="relative w-full max-w-[360px] py-12 px-6 lg:px-0">
 
           {/* Logo mobile */}
           <div className="flex items-center gap-2.5 mb-10 lg:hidden">

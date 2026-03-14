@@ -32,18 +32,14 @@ function maskCPF(value) {
 // ── Validador ────────────────────────────────────────────────────────────────
 function isValidCPF(cpf) {
   const digits = cpf.replace(/\D/g, "");
-
-  // Deve ter 11 dígitos e não pode ser sequência repetida (ex: 111.111.111-11)
   if (digits.length !== 11 || /^(\d)\1{10}$/.test(digits)) return false;
 
-  // Valida primeiro dígito verificador
   let sum = 0;
   for (let i = 0; i < 9; i++) sum += parseInt(digits[i]) * (10 - i);
   let check = (sum * 10) % 11;
   if (check === 10 || check === 11) check = 0;
   if (check !== parseInt(digits[9])) return false;
 
-  // Valida segundo dígito verificador
   sum = 0;
   for (let i = 0; i < 10; i++) sum += parseInt(digits[i]) * (11 - i);
   check = (sum * 10) % 11;
@@ -94,7 +90,7 @@ const PERKS = [
 
 export default function Register() {
   const navigate = useNavigate();
-  const [form, setForm]       = useState({ nome: "", cpf: "", email: "", password: "" });
+  const [form, setForm]         = useState({ nome: "", cpf: "", email: "", password: "" });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading]   = useState(false);
   const [erro, setErro]         = useState("");
@@ -107,8 +103,6 @@ export default function Register() {
     if (name === "cpf") {
       const masked = maskCPF(value);
       setForm({ ...form, cpf: masked });
-
-      // Valida ao terminar de preencher os 14 caracteres (formato 000.000.000-00)
       if (masked.length === 14) {
         setCpfErro(isValidCPF(masked) ? "" : "CPF inválido.");
       } else {
@@ -120,7 +114,6 @@ export default function Register() {
     setForm({ ...form, [name]: value });
   };
 
-  // Valida CPF também ao sair do campo (onBlur)
   const handleCpfBlur = () => {
     if (form.cpf.length > 0 && form.cpf.length < 14) {
       setCpfErro("CPF incompleto.");
@@ -133,7 +126,6 @@ export default function Register() {
     if (!form.nome || !form.email || !form.password) {
       setErro("Preencha todos os campos obrigatórios."); return;
     }
-    // Bloqueia envio se CPF preenchido mas inválido
     if (form.cpf && !isValidCPF(form.cpf)) {
       setCpfErro("CPF inválido."); return;
     }
@@ -158,7 +150,10 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ background: C.bgPage, color: C.txPrimary }}>
+    <div
+      className="flex"
+      style={{ minHeight: "100dvh", background: C.bgPage, color: C.txPrimary }}
+    >
 
       {/* ── Painel esquerdo ── */}
       <div
@@ -224,8 +219,10 @@ export default function Register() {
       </div>
 
       {/* ── Painel direito ── */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 relative"
-        style={{ background: C.bgPage }}>
+      <div
+        className="flex-1 flex items-start justify-center overflow-y-auto relative"
+        style={{ background: C.bgPage }}
+      >
         <div className="absolute pointer-events-none" style={{
           width: "500px", height: "500px",
           background: `radial-gradient(circle, ${C.accentMuted} 0%, transparent 65%)`,
@@ -234,7 +231,7 @@ export default function Register() {
           opacity: 0.08,
         }} />
 
-        <div className="relative w-full max-w-[360px]">
+        <div className="relative w-full max-w-[360px] py-12 px-6 lg:px-0">
 
           {/* Logo mobile */}
           <div className="flex items-center gap-2.5 mb-10 lg:hidden">
