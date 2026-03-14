@@ -15,6 +15,11 @@ const MESES_ABREV = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out"
 function getToken() { return localStorage.getItem("token") ?? ""; }
 const fmt = (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
 
+// ── Detecta iOS ──────────────────────────────────────────────────────────────
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
 function resolveAccentRGB() {
   const raw = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
   try {
@@ -178,7 +183,27 @@ export default function Relatorios() {
         doc.text(`AdminDesk · Relatório ${MESES[mes]}/${ano}`, 14, 292);
         doc.text(`Página ${i} de ${total}`, W - 14, 292, { align: "right" });
       }
-      doc.save(`relatorio-${MESES_ABREV[mes].toLowerCase()}-${ano}.pdf`);
+
+      const filename = `relatorio-${MESES_ABREV[mes].toLowerCase()}-${ano}.pdf`;
+
+      // ── iOS: abre em nova aba sem bagunçar o histórico ──────────────────────
+      if (isIOS()) {
+        const blob = doc.output("blob");
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement("a");
+        a.href     = url;
+        a.target   = "_blank";
+        a.rel      = "noopener noreferrer";
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // Libera o blob após 60s
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      } else {
+        doc.save(filename);
+      }
+
     } catch (e) { console.error("Erro ao gerar PDF:", e); }
     setGenerating(false);
   }
@@ -194,7 +219,7 @@ export default function Relatorios() {
 
         <div className="p-4 md:p-8 flex flex-col gap-4 md:gap-5">
 
-          {/* Título + controles — empilha no mobile */}
+          {/* Título + controles */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-widest mb-0.5"
@@ -243,7 +268,7 @@ export default function Relatorios() {
             </div>
           ) : (
             <>
-              {/* KPI Cards — 2 col mobile, 4 col desktop */}
+              {/* KPI Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
                   { label: "Receitas",   value: fmt(totalReceitaMes), Icon: TrendingUp,   useAccent: true },
@@ -289,17 +314,14 @@ export default function Relatorios() {
               <Section title="Receitas" count={receitasMes.length} dotAccent>
                 {receitasMes.length === 0 ? <Empty msg="Nenhuma receita registrada neste mês" />
                   : <>
-                      {/* Tabela — só desktop */}
                       <div className="hidden sm:block">
                         <Table rows={receitasMes} footerLabel="Total receitas"
                           footerValue={fmt(receitasMes.reduce((a,d) => a+(d.price||0),0))}
                           valueStyle={{ color: "var(--accent)" }} />
                       </div>
-                      {/* Cards — só mobile */}
                       <div className="sm:hidden flex flex-col">
                         {receitasMes.map((d, i) => (
-                          <TransactionCard key={i} item={d}
-                            valueColor="var(--accent)" prefix="+" />
+                          <TransactionCard key={i} item={d} valueColor="var(--accent)" prefix="+" />
                         ))}
                         <div className="flex items-center justify-between px-4 py-3"
                           style={{ background: "var(--bg-card-2)", borderTop: "1px solid var(--bd-div)" }}>
@@ -323,8 +345,7 @@ export default function Relatorios() {
                       </div>
                       <div className="sm:hidden flex flex-col">
                         {despesasMes.map((d, i) => (
-                          <TransactionCard key={i} item={d}
-                            valueColor="var(--color-danger)" prefix="−" />
+                          <TransactionCard key={i} item={d} valueColor="var(--color-danger)" prefix="−" />
                         ))}
                         <div className="flex items-center justify-between px-4 py-3"
                           style={{ background: "var(--bg-card-2)", borderTop: "1px solid var(--bd-div)" }}>
@@ -420,7 +441,6 @@ function fmtDate(s) {
   return `${d}/${m}/${y}`;
 }
 
-// Card de transação para mobile (substitui linhas de tabela)
 function TransactionCard({ item, valueColor, prefix }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3"
