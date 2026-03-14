@@ -13,8 +13,8 @@ public interface SpentRepository extends JpaRepository<Spent, Long> {
     @Query("SELECT SUM(s.price) FROM Spent s WHERE s.user.id = :userId AND s.type = :type")
     Double sumByUserIdAndType(@Param("userId") Long userId, @Param("type") String type);
 
-    @Query("SELECT FUNCTION('MONTH', s.data) as mes, s.type, SUM(s.price) as total " +
-            "FROM Spent s WHERE s.user.id = :userId AND FUNCTION('YEAR', s.data) = FUNCTION('YEAR', CURRENT_DATE) " +
-            "GROUP BY FUNCTION('MONTH', s.data), s.type ORDER BY mes")
+    @Query("select extract(month from s.data), s.type, sum(s.price) from Spent s " +
+            "where s.user.id = :userId and extract(year from s.data) = extract(year from current_date) " +
+            "group by extract(month from s.data), s.type order by 1")
     List<Object[]> monthlyByUser(@Param("userId") Long userId);
 }
