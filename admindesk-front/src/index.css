@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Tokens modo claro ─────────────────────────────────────────────────────── */
+:root {
+  --bg-page:    #f0f2f5;
+  --bg-card:    #ffffff;
+  --bg-card-2:  #f8fafc;
+  --bg-header:  rgba(240, 242, 245, 0.92);
+  --bg-input:   #ffffff;
+  --bg-hover:   rgba(0, 0, 0, 0.025);
+  --bg-subtle:  rgba(0, 0, 0, 0.04);
+
+  --bd-card:    rgba(0, 0, 0, 0.09);
+  --bd-div:     rgba(0, 0, 0, 0.07);
+  --bd-input:   rgba(0, 0, 0, 0.12);
+
+  --tx-primary: #0f172a;
+  --tx-sub:     #475569;
+  --tx-muted:   #94a3b8;
+
+  --color-danger:       #ef4444;
+  --color-danger-muted: rgba(239, 68, 68, 0.10);
+  --color-danger-ring:  rgba(239, 68, 68, 0.25);
+  --color-success:      #22c55e;
+  --color-purple:       #a78bfa;
+  --color-blue:         #60a5fa;
+
+  /* Accent padrão — sobrescrito pelo ThemeProvider */
+  --accent:            #3b82f6;
+  --accent-muted:      #eff6ff;
+  --accent-ring:       #bfdbfe;
+  --accent-shadow-css: 0 4px 14px rgba(59, 130, 246, 0.35);
+  --ui-density:        1;
+}
+
+/* ── Tokens modo escuro ────────────────────────────────────────────────────── */
+html.dark {
+  --bg-page:    #080d14;
+  --bg-card:    #0d1824;
+  --bg-card-2:  #0f1f2e;
+  --bg-header:  rgba(8, 13, 20, 0.88);
+  --bg-input:   rgba(255, 255, 255, 0.04);
+  --bg-hover:   rgba(255, 255, 255, 0.025);
+  --bg-subtle:  rgba(255, 255, 255, 0.04);
+
+  --bd-card:    rgba(255, 255, 255, 0.07);
+  --bd-div:     rgba(255, 255, 255, 0.06);
+  --bd-input:   rgba(255, 255, 255, 0.08);
+
+  --tx-primary: #f1f5f9;
+  --tx-sub:     #94a3b8;
+  --tx-muted:   rgba(255, 255, 255, 0.28);
+}
+
+/* ── Utilitários globais ───────────────────────────────────────────────────── */
+.btn-accent {
+  background-color: var(--accent);
+  box-shadow: var(--accent-shadow-css);
+  color: #fff;
+  transition: filter 0.15s;
+}
+.btn-accent:hover    { filter: brightness(1.12); }
+.btn-accent:disabled { opacity: 0.6; cursor: not-allowed; filter: none; }
+
+.btn-accent-muted { background-color: var(--accent-muted); color: var(--accent); }
+.tab-active       { background-color: var(--accent); box-shadow: var(--accent-shadow-css); color: #fff; }
+
+.focus-accent:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-ring);
+  outline: none;
+}
+
+.density-py  {
+  padding-top:    calc(0.625rem * var(--ui-density, 1));
+  padding-bottom: calc(0.625rem * var(--ui-density, 1));
+}
+.density-gap { gap: calc(1rem * var(--ui-density, 1)); }

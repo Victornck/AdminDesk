@@ -1,0 +1,24 @@
+# Maven
+target/
+*.jar
+*.war
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+
+# Spring Boot
+application-local.properties
+application-local.yml
+
+# Variáveis de ambiente
+.env
+.env.*
+
+# Sistema
+.DS_Store
+Thumbs.db
+node_modules/
+
+node_modules/
