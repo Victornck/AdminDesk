@@ -72,9 +72,7 @@ public class AuthController {
         return ResponseEntity.ok(token);
     }
 
-    // Registro restrito a ADMIN — remova @PreAuthorize se quiser registro público
     @PostMapping("/register")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> register(@RequestBody @Valid UserRegisterDTO dto) {
         userService.registrar(dto);
         return ResponseEntity.ok("Usuário criado com sucesso!");
