@@ -12,7 +12,7 @@ ENV VITE_API_URL=$VITE_API_URL
 
 RUN echo "VITE_API_URL=$VITE_API_URL"
 
-RUN npm vite build
+RUN npm run build
 
 
 # ---------- Build do Backend ----------
