@@ -55,7 +55,13 @@ public class SecurityConfig {
                                 "/*.css",
                                 "/*.png",
                                 "/*.svg",
-                                "/*.ico"
+                                "/*.ico",
+                                "/dashboard",
+                                "/clientes",
+                                "/despesas",
+                                "/relatorios",
+                                "/configuracoes",
+                                "/login"
                         ).permitAll()
 
                         .anyRequest().authenticated()
